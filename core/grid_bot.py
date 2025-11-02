@@ -1,580 +1,387 @@
-# core/grid_bot.py
 """
-🤖 ОСНОВНОЙ КЛАСС GRID TRADING BOT v9.1
+Grid Trading Bot v9.1 - Основной класс с исправлениями
 """
 
+import logging
+import threading
 import time
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
+from decimal import Decimal
+from typing import Dict, List, Optional
 
-from config import *
-from utils.api_client import APIClient
-from ai.market_analyzer import MarketAnalyzer
-from ai.optimizer import AIOptimizer
-from telegram.bot import TelegramBot
-from analytics.logger import DataLogger
-from analytics.reporter import ReportGenerator
-from core.risk_manager import RiskManager
 from core.order_manager import OrderManager
+from core.risk_manager import RiskManager
 from core.commission_tracker import CommissionTracker
-from core.thread_safe import ThreadSafeManager, SafeList, AtomicCounter
+from core.thread_safe import synchronized, SafeList, AtomicCounter
+from utils.bybit_client import BybitClient
+from analytics.performance_tracker import PerformanceTracker
 
-class AdvancedGridBotV91:
-    """🚀 ОСНОВНОЙ КЛАСС GRID TRADING BOT v9.1"""
+
+class GridTradingBot:
+    """Основной класс Grid Trading Bot с Thread Safety"""
     
-    def __init__(self):
-        """Инициализация бота с настройками из config.py"""
+    def __init__(self, config, symbol: str = None, grid_levels: int = None, 
+                 lower_bound: float = None, upper_bound: float = None):
+        self.config = config
+        self.symbol = symbol or config.SYMBOL
+        self.grid_levels = grid_levels or config.DEFAULT_GRID_LEVELS
+        self.lower_bound = Decimal(str(lower_bound)) if lower_bound else None
+        self.upper_bound = Decimal(str(upper_bound)) if upper_bound else None
         
-        # ==================== ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТОВ ====================
-        self.api_client = APIClient()
-        self.market_analyzer = MarketAnalyzer(self.api_client)
-        self.ai_optimizer = AIOptimizer(self.market_analyzer)
-        self.telegram_bot = TelegramBot(self.api_client)
-        self.data_logger = DataLogger()
-        self.reporter = ReportGenerator(self.telegram_bot)
-        self.risk_manager = RiskManager()
-        self.order_manager = OrderManager(self.api_client)
+        # Инициализация компонентов
+        self.bybit_client = BybitClient(
+            api_key=config.BYBIT_API_KEY,
+            api_secret=config.BYBIT_API_SECRET,
+            demo_mode=config.DEMO_MODE,
+            testnet=config.BYBIT_TESTNET
+        )
         
-        # ==================== НОВЫЕ МОДУЛИ v9.1 ====================
-        self.commission_tracker = CommissionTracker(self.api_client)
-        self.thread_safe = ThreadSafeManager()
+        self.order_manager = OrderManager(self.bybit_client)
+        self.risk_manager = RiskManager(config)
+        self.performance_tracker = PerformanceTracker()
+        self.commission_tracker = CommissionTracker(self.bybit_client)
         
-        # ==================== НАСТРОЙКИ ИЗ CONFIG ====================
-        self.symbol = SYMBOL
+        # Thread-safe структуры данных
+        self._operation_lock = threading.RLock()
+        self.active_orders = SafeList()
+        self.order_history = SafeList()
+        self.trade_count = AtomicCounter()
+        self.is_running = False
         
-        # ==================== ПАРАМЕТРЫ СЕТКИ ПО УМОЛЧАНИЮ ====================
-        self.grid_levels = DEFAULT_GRID_LEVELS
-        self.order_size = DEFAULT_ORDER_SIZE
-        self.grid_spacing = DEFAULT_GRID_SPACING
-        self.monitoring_duration = 240
-        self.grid_refresh_time = 1800
+        # Состояние бота
+        self.grid_prices = []
+        self.current_price = Decimal('0')
+        self.balance = Decimal('0')
+        self.equity = Decimal('0')
         
-        # ==================== СТАТИСТИКА И МОНИТОРИНГ ====================
-        self.total_commission = 0
-        self.initial_usdt = 0
-        self.initial_btc = 0
-        self.total_orders_created = 0
-        self.executed_orders_count = 0
-        self.max_profit = 0
-        self.max_drawdown = 0
-        
-        # ==================== ПОТОКОБЕЗОПАСНЫЕ СТРУКТУРЫ ====================
-        self.active_order_ids = SafeList()
-        self.order_counter = AtomicCounter()
-        self.trade_log = SafeList()
-        
-        # ==================== СЧЕТЧИКИ ОШИБОК ====================
-        self.api_errors = 0
-        self.connection_retries = 0
-        self.max_connection_retries = 100
-        
-        # ==================== ВРЕМЯ РАБОТЫ ====================
-        self.start_time = None
-        self.grid_count = 0
-        self.last_telegram_report = 0
-        self.telegram_report_interval = 1800
-        
-        # ==================== AI И АНАЛИТИКА ====================
-        self.ai_mode = False
-        self.price_history = []
-        self.market_regime = "unknown"
-        
-        # ==================== TELEGRAM УПРАВЛЕНИЕ ====================
-        self.user_commanded_stop = False
-        self.user_commanded_emergency_stop = False
-        
-        print("✅ Бот v9.1 инициализирован с thread safety и точным учетом комиссий")
-
-    async def initialize(self):
-        """🔍 ИНИЦИАЛИЗАЦИЯ С УЧЕТОМ THREAD SAFETY"""
-        print("\n🔍 Инициализация бота v9.1...")
-        
-        # Инициализация комиссионных ставок
-        await self.commission_tracker.initialize_commission_rates([self.symbol])
-        
-        if not self.initialize_bot():
-            print("❌ Не удалось инициализировать бота. Проверьте соединение.")
-            return False
+        self.logger = logging.getLogger(__name__)
+        self._initialize_bot()
+    
+    def _initialize_bot(self):
+        """Инициализация бота"""
+        try:
+            # Получение текущей цены и баланса
+            self.current_price = self._get_current_price()
+            self.balance = self._get_account_balance()
             
-        return True
-
-    def initialize_bot(self):
-        """🔍 ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА СОЕДИНЕНИЯ С API BYBIT"""
-        print("\n🔍 Проверка соединения с API Bybit...")
-        
-        price = self.api_client.get_current_price(self.symbol)
-        if price is None:
-            print("❌ Не удалось подключиться к API Bybit")
-            return False
+            # Расчет границ сетки, если не заданы
+            if not self.lower_bound or not self.upper_bound:
+                self._calculate_grid_bounds()
             
-        balance = self.api_client.get_balance()
-        if balance == (0, 0):
-            print("❌ Не удалось получить баланс")
-            return False
-        
-        self.initial_usdt, self.initial_btc = balance
-        self.initial_price = price
+            # Создание уровней сетки
+            self._create_grid_levels()
             
-        print(f"✅ Соединение установлено. Текущая цена: {price:.1f}")
-        print(f"💰 Баланс: {balance[0]:.2f} USDT, {balance[1]:.6f} BTC")
+            self.logger.info(f"Grid Bot инициализирован для {self.symbol}")
+            self.logger.info(f"Уровни: {self.grid_levels}, Границы: {self.lower_bound}-{self.upper_bound}")
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка инициализации бота: {e}")
+            raise
+    
+    @synchronized
+    def start(self):
+        """Запуск торгового бота"""
+        if self.is_running:
+            self.logger.warning("Бот уже запущен")
+            return
         
-        self.telegram_bot.send_start_alert({
-            'usdt_balance': balance[0],
-            'btc_balance': balance[1],
-            'ai_mode': self.ai_mode,
-            'duration': self.monitoring_duration
-        })
-        return True
-
-    @ThreadSafeManager.synchronized('main_lock')
-    def interactive_setup(self):
-        """🎮 ИНТЕРАКТИВНАЯ НАСТРОЙКА ПАРАМЕТРОВ С THREAD SAFETY"""
-        print("\n🎮 ИНТЕРАКТИВНАЯ НАСТРОЙКА AI GRID BOT v9.1")
-        print("=" * 50)
-        
-        choice = input("\nВыберите режим:\n1. Использовать стандартные параметры\n2. Настроить параметры вручную\n3. 🤖 ПРОДВИНУТЫЙ AI-режим (рекомендуется)\n\nВаш выбор (1/2/3): ").strip()
-        
-        # Запрос времени работы для всех режимов
-        print(f"\n⏱️ Время работы сессии (в минутах)")
-        print(f"   Доступный диапазон: {MIN_SESSION_DURATION} - {MAX_SESSION_DURATION} минут")
-        print(f"   Пример: 120 (2 часа), 720 (12 часов), 1440 (24 часа)")
+        self.is_running = True
+        self.logger.info("Запуск Grid Trading Bot...")
         
         try:
-            duration_input = input(f"Введите время работы (по умолчанию {self.monitoring_duration}): ").strip()
-            if duration_input:
-                custom_duration = int(duration_input)
-                if MIN_SESSION_DURATION <= custom_duration <= MAX_SESSION_DURATION:
-                    self.monitoring_duration = custom_duration
-                else:
-                    print(f"⚠️ Время должно быть между {MIN_SESSION_DURATION} и {MAX_SESSION_DURATION} минут. Использую значение по умолчанию.")
-            else:
-                print(f"✅ Использую время по умолчанию: {self.monitoring_duration} минут")
-        except ValueError:
-            print(f"❌ Ошибка ввода. Использую значение по умолчанию: {self.monitoring_duration} минут")
+            # Отмена всех активных ордеров перед началом
+            self._cancel_all_orders()
+            
+            # Размещение начальных ордеров
+            self._place_initial_orders()
+            
+            # Запуск основного цикла
+            self._main_loop()
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка при запуске бота: {e}")
+            self.stop()
+    
+    @synchronized
+    def stop(self):
+        """Остановка бота"""
+        self.is_running = False
+        self.logger.info("Остановка Grid Trading Bot...")
         
-        if choice == "3":
-            print("\n🧠 АКТИВАЦИЯ ПРОДВИНУТОГО AI-РЕЖИМА")
-            print("=" * 45)
-            
-            if DEMO_MODE:
-                print("🔸 ДЕМО-РЕЖИМ: AI использует упрощенный анализ")
-                print("🔸 В реальном режиме анализ будет более точным")
-            
-            print("🤖 AI анализирует текущие рыночные условия...")
-            
+        try:
+            self._cancel_all_orders()
+            self._save_state()
+        except Exception as e:
+            self.logger.error(f"Ошибка при остановке бота: {e}")
+    
+    def _main_loop(self):
+        """Основной цикл работы бота"""
+        while self.is_running:
             try:
-                # Получаем текущую цену для инициализации истории
-                current_price = self.api_client.get_current_price(self.symbol)
-                if current_price:
-                    self.price_history = [current_price] * 50
+                # Обновление текущей цены
+                self.current_price = self._get_current_price()
                 
-                ai_recommendations = self.ai_optimizer.get_optimized_parameters(
-                    self.price_history, 
-                    self.monitoring_duration
-                )
+                # Проверка исполнения ордеров
+                self._check_order_fills()
                 
-                print(f"📊 AI анализ завершен:")
-                print(f"   📈 Режим рынка: {ai_recommendations['market_regime']}")
-                print(f"   📏 Рекомендуемые уровни: {ai_recommendations['grid_levels']}")
-                print(f"   🎯 Расстояние: {ai_recommendations['grid_spacing']*100:.2f}%")
-                print(f"   🔄 Интервал обновления: {ai_recommendations['grid_refresh_time']} сек")
-                print(f"   ⏱️ Время работы: {self.monitoring_duration} мин")
+                # Проверка рисков
+                if not self.risk_manager.check_risk_limits(self.equity, self.balance):
+                    self.logger.warning("Превышены лимиты рисков - остановка")
+                    self.stop()
+                    break
                 
-                if DEMO_MODE:
-                    print("   💡 Примечание: В демо-режиме анализ основан на текущих данных")
+                # Перерасчет сетки при значительном движении цены
+                self._check_grid_recalculation()
                 
-                self.grid_levels = ai_recommendations['grid_levels']
-                self.grid_spacing = ai_recommendations['grid_spacing']
-                self.grid_refresh_time = ai_recommendations['grid_refresh_time']
-                self.ai_mode = True
-                self.market_regime = ai_recommendations['market_regime']
+                # Обновление производительности
+                self._update_performance()
                 
-                print("✅ Параметры установлены по рекомендации AI")
+                time.sleep(1)  # Пауза между итерациями
                 
             except Exception as e:
-                print(f"❌ Ошибка AI анализа: {e}. Использую стандартные параметры.")
-                self.ai_mode = True
-                self.grid_levels = 4
-                self.grid_spacing = 0.0015
-                self.grid_refresh_time = 1800
+                self.logger.error(f"Ошибка в основном цикле: {e}")
+                time.sleep(5)
+    
+    @synchronized
+    def _place_initial_orders(self):
+        """Размещение начальных ордеров сетки"""
+        self.logger.info("Размещение начальных ордеров сетки...")
         
-        elif choice == "2":
-            print("\n📊 Настройка параметров сетки:")
-            
-            try:
-                self.grid_levels = int(input(f"Количество уровней в каждую сторону (по умолчанию {self.grid_levels}): ") or self.grid_levels)
-                
-                default_size = self.order_size
-                size_input = input(f"Размер ордера в BTC (по умолчанию {default_size}): ") or str(default_size)
-                self.order_size = float(size_input)
-                
-                # Используем оптимизированные минимальные расстояния
-                min_distance = MIN_GRID_DISTANCES.get(self.symbol, MIN_GRID_DISTANCES["DEFAULT"])
-                default_spacing = max(self.grid_spacing * 100, min_distance * 100)
-                spacing_input = input(f"Расстояние между уровнями в % (минимум {min_distance*100:.2f}%, по умолчанию {default_spacing:.2f}%): ") or str(default_spacing)
-                user_spacing = float(spacing_input) / 100
-                
-                if user_spacing < min_distance:
-                    print(f"⚠️ Расстояние слишком маленькое. Установлено минимальное: {min_distance*100:.2f}%")
-                    self.grid_spacing = min_distance
-                else:
-                    self.grid_spacing = user_spacing
-                
-                self.grid_refresh_time = int(input(f"Интервал пересоздания сетки в секундах (по умолчанию {self.grid_refresh_time}): ") or self.grid_refresh_time)
-                
-                stop_loss_input = input(f"Стоп-лосс в % (по умолчанию {STOP_LOSS_PCT * 100}%): ") or str(STOP_LOSS_PCT * 100)
-                self.risk_manager.stop_loss_pct = float(stop_loss_input) / 100
-                
-                drawdown_input = input(f"Максимальная просадка в % (по умолчанию {MAX_DRAWDOWN_PCT * 100}%): ") or str(MAX_DRAWDOWN_PCT * 100)
-                self.risk_manager.max_drawdown_pct = float(drawdown_input) / 100
-                
-            except ValueError as e:
-                print(f"❌ Ошибка ввода: {e}. Использую значения по умолчанию.")
-        
-        self.print_parameters()
-        
-        confirm = input("\n🚀 Запустить бота с этими параметрами? (y/n): ").strip().lower()
-        return confirm == 'y'
-
-    def print_parameters(self):
-        """📊 ВЫВОД ТЕКУЩИХ ПАРАМЕТРОВ БОТА"""
-        print("\n📊 ТЕКУЩИЕ ПАРАМЕТРЫ БОТА v9.1:")
-        print(f"   Символ: {self.symbol}")
-        print(f"   Уровней сетки: {self.grid_levels} (в каждую сторону)")
-        print(f"   Размер ордера: {self.order_size} BTC")
-        print(f"   Расстояние между уровнями: {self.grid_spacing * 100:.2f}%")
-        print(f"   Стоп-лосс: {self.risk_manager.stop_loss_pct * 100}%")
-        print(f"   Макс. просадка: {self.risk_manager.max_drawdown_pct * 100}%")
-        print(f"   Время работы: {self.monitoring_duration} минут ({self.monitoring_duration/60:.1f} часов)")
-        print(f"   Интервал пересоздания: {self.grid_refresh_time} секунд")
-        print(f"   Всего ордеров в сетке: {self.grid_levels * 2}")
-        print(f"   Макс. ошибок API: {MAX_API_ERRORS}")
-        print(f"   Режим: {'🤖 AI-оптимизация' if self.ai_mode else '👨‍💻 Ручной'}")
-        print(f"   Thread Safety: ✅ Активен")
-        print(f"   Точные комиссии: ✅ Активен")
-
-    @ThreadSafeManager.synchronized('main_lock')
-    def run_ai_enhanced_monitoring(self):
-        """🔄 ОСНОВНОЙ ЦИКЛ МОНИТОРИНГА С AI ОПТИМИЗАЦИЕЙ"""
+        for price in self.grid_prices:
+            if price < self.current_price:
+                # Ордера на покупку ниже текущей цены
+                self._create_buy_order(price)
+            else:
+                # Ордера на продажу выше текущей цены
+                self._create_sell_order(price)
+    
+    @synchronized
+    def _create_buy_order(self, price: Decimal):
+        """Создание ордера на покупку"""
         try:
-            print(f"\n🧠 Запуск AI-улучшенного мониторинга на {self.monitoring_duration} минут...")
+            quantity = Decimal(str(self.config.DEFAULT_ORDER_SIZE))
             
-            if not self.initialize_bot():
-                print("❌ Не удалось инициализировать бота. Проверьте соединение.")
-                return 0, True
-            
-            self.data_logger.setup_logging()
-            
-            self.initial_usdt, self.initial_btc = self.api_client.get_balance()
-            self.initial_price = self.api_client.get_current_price(self.symbol)
-            
-            if self.initial_price is None:
-                print("❌ Не удалось получить начальную цену после инициализации.")
-                return 0, True
-                
-            initial_total_balance = self.get_total_balance_usdt()
-            
-            print(f"💰 Начальный баланс: {self.initial_usdt:.2f} USDT + {self.initial_btc:.6f} BTC")
-            print(f"🎯 Начальная цена: {self.initial_price:.1f} USDT")
-            print(f"⏰ Время начала: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"⏰ Ожидаемое время завершения: {(datetime.now() + timedelta(minutes=self.monitoring_duration)).strftime('%Y-%m-%d %H:%M:%S')}")
-            
-            start_time = time.time()
-            end_time = start_time + (self.monitoring_duration * 60)
-            self.start_time = start_time
-            
-            self.price_history = [self.initial_price] * 50
-            
-            self.executed_orders_count = 0
-            self.last_telegram_report = start_time
-            
-            # Создаем первую сетку
-            orders_placed = self.order_manager.create_grid(
-                self.symbol, self.grid_levels, self.order_size, 
-                self.grid_spacing, self.initial_price,
-                self.commission_tracker
+            # Расчет комиссии
+            commission = self.commission_tracker.calculate_commission(
+                order_type="BUY",
+                quantity=float(quantity),
+                price=float(price),
+                is_maker=True
             )
-            last_grid_time = time.time()
-            self.grid_count = 1
             
-            stop_triggered = False
+            # Создание ордера
+            order_result = self.order_manager.create_limit_buy_order(
+                symbol=self.symbol,
+                quantity=float(quantity),
+                price=float(price)
+            )
             
-            while time.time() < end_time and not stop_triggered:
-                try:
-                    # Проверяем команды Telegram (с защитой от старых сообщений)
-                    self.telegram_bot.check_commands(self)
-                    
-                    if self.user_commanded_stop:
-                        print("\n🛑 Получена команда остановки...")
-                        stop_triggered = True
-                        break
-                        
-                    if self.user_commanded_emergency_stop:
-                        print("\n🚨 АВАРИЙНАЯ ОСТАНОВКА!")
-                        self.order_manager.cancel_all_orders(self.symbol)
-                        stop_triggered = True
-                        break
-                    
-                    active_orders = self.order_manager.get_active_orders_count(self.symbol)
-                    current_usdt, current_btc = self.api_client.get_balance()
-                    current_price = self.api_client.get_current_price(self.symbol)
-                    
-                    if current_price is None:
-                        print("❌ Не удалось получить текущую цену. Пропускаем итерацию...")
-                        time.sleep(30)
-                        continue
-                    
-                    # Обновляем историю цен
-                    self.price_history.append(current_price)
-                    if len(self.price_history) > 100:
-                        self.price_history.pop(0)
-                    
-                    # Проверяем исполненные ордера с точным учетом комиссий
-                    self.check_executed_orders(current_usdt, current_btc, current_price)
-                    
-                    # Расчет прибыли
-                    total_balance = current_usdt + (current_btc * current_price)
-                    net_profit = total_balance - initial_total_balance - self.total_commission
-
-                    time_left = (end_time - time.time()) / 60
-                    
-                    # Логируем данные
-                    log_data = {
-                        'timestamp': datetime.now().isoformat(),
-                        'current_price': current_price,
-                        'active_orders': active_orders,
-                        'executed_orders': self.executed_orders_count,
-                        'usdt_balance': current_usdt,
-                        'btc_balance': current_btc,
-                        'net_profit': net_profit,
-                        'total_commission': self.total_commission,
-                        'grid_count': self.grid_count,
-                        'time_left_min': time_left,
-                        'api_errors': self.api_errors
-                    }
-                    self.data_logger.log_trading_data(log_data)
-                    
-                    print(f"\r📊 Активных: {active_orders:2d} | Исполнено: {self.executed_orders_count:2d} | Прибыль: {net_profit:+.4f} USDT | Сетка: #{self.grid_count} | Ошибки: {self.api_errors} | Осталось: {time_left:.1f} мин", end="")
-                    
-                    # Проверяем условия остановки
-                    if self.risk_manager.check_stop_conditions(
-                        net_profit, initial_total_balance, 
-                        self.api_errors, self.max_profit, self.max_drawdown
-                    ):
-                        stop_triggered = True
-                        self.telegram_bot.send_stop_alert({
-                            'reason': self.risk_manager.get_stop_reason(),
-                            'profit': net_profit,
-                            'running_time': self.get_running_time()
-                        })
-                        break
-                    
-                    # Периодический отчет в Telegram
-                    current_time = time.time()
-                    if current_time - self.last_telegram_report > self.telegram_report_interval:
-                        self.send_periodic_report(current_usdt, current_btc, current_price, net_profit)
-                        self.last_telegram_report = current_time
-                    
-                    # Пересоздаем сетку по истечении времени
-                    if current_time - last_grid_time > self.grid_refresh_time:
-                        current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        print(f"\n🔄 [{current_timestamp}] Пересоздаём сетку (#{self.grid_count + 1})...")
-                        self.order_manager.cancel_all_orders(self.symbol)
-                        
-                        # AI оптимизация при пересоздании сетки
-                        if self.ai_mode:
-                            try:
-                                ai_recommendations = self.ai_optimizer.get_optimized_parameters(
-                                    self.price_history, 
-                                    self.monitoring_duration
-                                )
-                                old_levels = self.grid_levels
-                                old_spacing = self.grid_spacing
-                                
-                                self.grid_levels = ai_recommendations['grid_levels']
-                                self.grid_spacing = ai_recommendations['grid_spacing']
-                                self.grid_refresh_time = ai_recommendations['grid_refresh_time']
-                                
-                                if old_spacing != self.grid_spacing or old_levels != self.grid_levels:
-                                    print(f"🧠 AI оптимизация: уровни {old_levels}→{self.grid_levels}, расстояние {old_spacing*100:.2f}%→{self.grid_spacing*100:.2f}%")
-                                    
-                                    self.telegram_bot.send_ai_optimization_alert({
-                                        'volatility': ai_recommendations.get('volatility', 0),
-                                        'old_spacing': old_spacing,
-                                        'new_spacing': self.grid_spacing,
-                                        'old_levels': old_levels,
-                                        'new_levels': self.grid_levels,
-                                        'market_regime': ai_recommendations['market_regime']
-                                    })
-                                    
-                            except Exception as e:
-                                print(f"❌ Ошибка AI оптимизации: {e}")
-                        
-                        new_orders = self.order_manager.create_grid(
-                            self.symbol, self.grid_levels, self.order_size, 
-                            self.grid_spacing, current_price,
-                            self.commission_tracker
-                        )
-                        last_grid_time = current_time
-                        self.grid_count += 1
-                    
-                    time.sleep(10)
-                    
-                except Exception as e:
-                    error_msg = f"Ошибка мониторинга: {e}"
-                    print(f"\n❌ {error_msg}")
-                    print("🔄 Пытаемся продолжить через 30 секунд...")
-                    time.sleep(30)
+            # Запись комиссии
+            self.commission_tracker.record_commission(
+                order_id=order_result['orderId'],
+                symbol=self.symbol,
+                commission=commission,
+                order_type="BUY",
+                timestamp=datetime.now()
+            )
             
-            print(f"\n\n📈 ФИНАЛЬНЫЙ ОТЧЕТ:")
-            self.order_manager.cancel_all_orders(self.symbol)
-            
-            final_balance = self.get_total_balance_usdt()
-            total_profit = final_balance - initial_total_balance
-            
-            # Отправляем финальный отчет
-            final_stats = {
-                'initial_balance': initial_total_balance,
-                'final_balance': final_balance,
-                'total_profit': total_profit,
-                'grid_count': self.grid_count,
-                'orders_created': self.total_orders_created,
-                'orders_executed': self.executed_orders_count,
-                'total_commission': self.total_commission,
-                'api_errors': self.api_errors,
-                'running_time': self.get_running_time(),
-                'market_regime': self.market_regime
+            # Сохранение ордера
+            order_data = {
+                'order_id': order_result['orderId'],
+                'symbol': self.symbol,
+                'side': 'BUY',
+                'price': price,
+                'quantity': quantity,
+                'timestamp': datetime.now(),
+                'commission': commission
             }
             
-            self.reporter.send_final_report(final_stats)
+            self.active_orders.append(order_data)
+            self.trade_count.increment()
             
-            print(f"📊 Всего ошибок API: {self.api_errors}")
-            print(f"📊 Сеток создано: {self.grid_count}")
-            print(f"📦 Ордеров размещено: {self.total_orders_created}")
-            print(f"✅ Ордеров исполнено: {self.executed_orders_count}")
-            print(f"💸 Комиссий уплачено: {self.total_commission:.4f} USDT")
+            self.logger.info(f"Создан BUY ордер: {quantity} {self.symbol} по {price}")
             
-            return total_profit, stop_triggered
+            return order_result
             
         except Exception as e:
-            error_msg = f"Критическая ошибка в основном цикле: {e}"
-            print(f"❌ {error_msg}")
-            self.telegram_bot.send_error_alert({'error': error_msg})
-            return 0, True
-
-    @ThreadSafeManager.synchronized('order_lock')
-    def check_executed_orders(self, current_usdt, current_btc, current_price):
-        """✅ ПРОВЕРКА ИСПОЛНЕННЫХ ОРДЕРОВ С ТОЧНЫМ УЧЕТОМ КОМИССИЙ"""
+            self.logger.error(f"Ошибка создания BUY ордера: {e}")
+            raise
+    
+    @synchronized
+    def _create_sell_order(self, price: Decimal):
+        """Создание ордера на продажу"""
         try:
-            if not hasattr(self, 'last_balance_usdt'):
-                self.last_balance_usdt = current_usdt
-                self.last_balance_btc = current_btc
-                return
+            quantity = Decimal(str(self.config.DEFAULT_ORDER_SIZE))
             
-            usdt_change = current_usdt - self.last_balance_usdt
-            btc_change = current_btc - self.last_balance_btc
+            # Расчет комиссии
+            commission = self.commission_tracker.calculate_commission(
+                order_type="SELL",
+                quantity=float(quantity),
+                price=float(price),
+                is_maker=True
+            )
             
-            order_threshold = self.order_size * 0.8
-            if abs(btc_change) > order_threshold:
-                if current_price:
-                    if btc_change > 0:
-                        # Точный расчет комиссии для покупки
-                        commission = self.commission_tracker.calculate_commission(
-                            self.symbol, btc_change, current_price, is_maker=True
-                        )
-                        self.total_commission += commission
-                        
-                        order_data = {
-                            'side': 'BUY',
-                            'qty': btc_change,
-                            'price': current_price,
-                            'commission': commission,
-                            'timestamp': datetime.now().strftime('%H:%M:%S')
-                        }
-                        self.executed_orders_count += 1
-                        self.telegram_bot.send_order_alert(order_data)
-                        print(f"✅ Обнаружена покупка: {btc_change:.6f} BTC по {current_price:.1f}, комиссия: {commission:.6f} USDT")
-                    
-                    elif btc_change < 0:
-                        # Точный расчет комиссии для продажи
-                        commission = self.commission_tracker.calculate_commission(
-                            self.symbol, abs(btc_change), current_price, is_maker=False
-                        )
-                        self.total_commission += commission
-                        
-                        order_data = {
-                            'side': 'SELL', 
-                            'qty': abs(btc_change),
-                            'price': current_price,
-                            'commission': commission,
-                            'timestamp': datetime.now().strftime('%H:%M:%S')
-                        }
-                        self.executed_orders_count += 1
-                        self.telegram_bot.send_order_alert(order_data)
-                        print(f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC по {current_price:.1f}, комиссия: {commission:.6f} USDT")
+            # Создание ордера
+            order_result = self.order_manager.create_limit_sell_order(
+                symbol=self.symbol,
+                quantity=float(quantity),
+                price=float(price)
+            )
             
-            self.last_balance_usdt = current_usdt
-            self.last_balance_btc = current_btc
+            # Запись комиссии
+            self.commission_tracker.record_commission(
+                order_id=order_result['orderId'],
+                symbol=self.symbol,
+                commission=commission,
+                order_type="SELL",
+                timestamp=datetime.now()
+            )
+            
+            # Сохранение ордера
+            order_data = {
+                'order_id': order_result['orderId'],
+                'symbol': self.symbol,
+                'side': 'SELL',
+                'price': price,
+                'quantity': quantity,
+                'timestamp': datetime.now(),
+                'commission': commission
+            }
+            
+            self.active_orders.append(order_data)
+            self.trade_count.increment()
+            
+            self.logger.info(f"Создан SELL ордер: {quantity} {self.symbol} по {price}")
+            
+            return order_result
             
         except Exception as e:
-            print(f"❌ Ошибка проверки исполненных ордеров: {e}")
-
-    @ThreadSafeManager.synchronized('main_lock')
-    def get_total_balance_usdt(self):
-        """💰 РАСЧЕТ ОБЩЕГО БАЛАНСА В USDT"""
-        usdt, btc = self.api_client.get_balance()
-        current_price = self.api_client.get_current_price(self.symbol)
-        if current_price is None:
-            return 0
-        return usdt + (btc * current_price)
-
-    def get_running_time(self):
-        """⏰ ПОЛУЧЕНИЕ ВРЕМЕНИ РАБОТЫ БОТА"""
-        if self.start_time:
-            running_seconds = time.time() - self.start_time
-            hours = int(running_seconds // 3600)
-            minutes = int((running_seconds % 3600) // 60)
-            return f"{hours:02d}:{minutes:02d}"
-        return "00:00"
-
-    @ThreadSafeManager.synchronized('main_lock')
-    def send_periodic_report(self, usdt_balance, btc_balance, current_price, profit):
-        """📊 ОТПРАВКА ПЕРИОДИЧЕСКОГО ОТЧЕТА"""
+            self.logger.error(f"Ошибка создания SELL ордера: {e}")
+            raise
+    
+    def _get_current_price(self) -> Decimal:
+        """Получение текущей цены"""
         try:
-            total_balance = usdt_balance + (btc_balance * current_price) if current_price else 0
-            
-            self.telegram_bot.send_periodic_report({
-                'running_time': self.get_running_time(),
-                'usdt_balance': usdt_balance,
-                'btc_balance': btc_balance,
-                'total_balance': total_balance,
-                'profit': profit,
-                'commission': self.total_commission,
-                'executed_orders': self.executed_orders_count,
-                'grid_count': self.grid_count,
-                'api_errors': self.api_errors
-            })
+            ticker = self.bybit_client.get_ticker(symbol=self.symbol)
+            return Decimal(str(ticker['lastPrice']))
         except Exception as e:
-            print(f"❌ Ошибка отправки периодического отчета: {e}")
-
-    @ThreadSafeManager.synchronized('main_lock')
-    def send_telegram_message(self, message):
-        """📨 ОТПРАВКА СООБЩЕНИЯ В TELEGRAM (для обратной совместимости)"""
-        return self.telegram_bot.send_message(message)
+            self.logger.error(f"Ошибка получения цены: {e}")
+            return Decimal('0')
+    
+    def _get_account_balance(self) -> Decimal:
+        """Получение баланса аккаунта"""
+        try:
+            balance_info = self.bybit_client.get_wallet_balance()
+            return Decimal(str(balance_info['totalEquity']))
+        except Exception as e:
+            self.logger.error(f"Ошибка получения баланса: {e}")
+            return Decimal('0')
+    
+    def _calculate_grid_bounds(self):
+        """Расчет границ сетки на основе текущей цены"""
+        volatility_factor = Decimal('0.05')  # 5% волатильность
         
-    @ThreadSafeManager.synchronized('order_lock')
-    def cancel_all_orders_safe(self):
-        """🛑 БЕЗОПАСНАЯ ОТМЕНА ВСЕХ ОРДЕРОВ (для обратной совместимости)"""
-        return self.order_manager.cancel_all_orders(self.symbol)
-
-    @ThreadSafeManager.synchronized('main_lock')
-    def get_bot_status(self):
-        """📊 ПОЛУЧЕНИЕ СТАТУСА БОТА (THREAD-SAFE)"""
+        self.lower_bound = self.current_price * (1 - volatility_factor)
+        self.upper_bound = self.current_price * (1 + volatility_factor)
+    
+    def _create_grid_levels(self):
+        """Создание уровней цен для сетки"""
+        price_range = self.upper_bound - self.lower_bound
+        step = price_range / (self.grid_levels - 1)
+        
+        self.grid_prices = [
+            self.lower_bound + step * i 
+            for i in range(self.grid_levels)
+        ]
+    
+    @synchronized
+    def _check_order_fills(self):
+        """Проверка исполнения ордеров"""
+        for order in self.active_orders.copy():
+            try:
+                order_status = self.order_manager.get_order_status(
+                    symbol=self.symbol,
+                    order_id=order['order_id']
+                )
+                
+                if order_status == 'FILLED':
+                    self._handle_filled_order(order)
+                    
+            except Exception as e:
+                self.logger.error(f"Ошибка проверки ордера {order['order_id']}: {e}")
+    
+    @synchronized
+    def _handle_filled_order(self, order: Dict):
+        """Обработка исполненного ордера"""
+        try:
+            # Перемещение в историю
+            self.active_orders.remove(order)
+            self.order_history.append(order)
+            
+            # Создание противоположного ордера
+            if order['side'] == 'BUY':
+                self._create_sell_order(order['price'] * Decimal('1.005'))  # +0.5% для прибыли
+            else:
+                self._create_buy_order(order['price'] * Decimal('0.995'))   # -0.5% для покупки
+            
+            self.logger.info(f"Ордер {order['order_id']} исполнен, создан противоположный ордер")
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка обработки исполненного ордера: {e}")
+    
+    @synchronized
+    def _cancel_all_orders(self):
+        """Отмена всех активных ордеров"""
+        try:
+            for order in self.active_orders:
+                self.order_manager.cancel_order(
+                    symbol=self.symbol,
+                    order_id=order['order_id']
+                )
+            
+            self.active_orders.clear()
+            self.logger.info("Все активные ордера отменены")
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка отмены ордеров: {e}")
+    
+    def _check_grid_recalculation(self):
+        """Проверка необходимости перерасчета сетки"""
+        # TODO: Реализовать логику перерасчета при значительном движении цены
+        pass
+    
+    def _update_performance(self):
+        """Обновление метрик производительности"""
+        self.equity = self.balance + self._calculate_unrealized_pnl()
+        self.performance_tracker.update_metrics(
+            equity=float(self.equity),
+            balance=float(self.balance),
+            active_orders=len(self.active_orders)
+        )
+    
+    def _calculate_unrealized_pnl(self) -> Decimal:
+        """Расчет нереализованного PnL"""
+        # TODO: Реализовать расчет нереализованного PnL
+        return Decimal('0')
+    
+    def _save_state(self):
+        """Сохранение состояния бота"""
+        # TODO: Реализовать сохранение состояния
+        pass
+    
+    def get_status(self) -> Dict:
+        """Получение статуса бота"""
         return {
-            'active_orders': len(self.active_order_ids),
-            'is_running': not self.user_commanded_stop,
+            'symbol': self.symbol,
+            'is_running': self.is_running,
+            'current_price': float(self.current_price),
+            'balance': float(self.balance),
+            'equity': float(self.equity),
+            'active_orders': len(self.active_orders),
+            'total_trades': self.trade_count.get(),
             'grid_levels': self.grid_levels,
-            'executed_orders': self.executed_orders_count,
-            'total_commission': self.total_commission,
-            'grid_count': self.grid_count
+            'grid_bounds': {
+                'lower': float(self.lower_bound),
+                'upper': float(self.upper_bound)
+            }
         }
