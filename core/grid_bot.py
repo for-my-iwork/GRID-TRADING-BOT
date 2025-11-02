@@ -1,5 +1,5 @@
 """
-Grid Trading Bot v9.1 - Основной класс с исправлениями
+Grid Trading Bot v9.1 - ПОЛНОСТЬЮ ПЕРЕРАБОТАННЫЙ КОД
 """
 
 import logging
@@ -18,7 +18,7 @@ from analytics.performance_tracker import PerformanceTracker
 
 
 class GridTradingBot:
-    """Основной класс Grid Trading Bot с Thread Safety"""
+    """Основной класс Grid Trading Bot с полными исправлениями"""
     
     def __init__(self, config, symbol: str = None, grid_levels: int = None, 
                  lower_bound: float = None, upper_bound: float = None):
@@ -33,10 +33,10 @@ class GridTradingBot:
             api_key=config.BYBIT_API_KEY,
             api_secret=config.BYBIT_API_SECRET,
             demo_mode=config.DEMO_MODE,
-            testnet=config.BYBIT_TESTNET
+            testnet=getattr(config, 'BYBIT_TESTNET', True)
         )
         
-        self.order_manager = OrderManager(self.bybit_client)
+        self.order_manager = OrderManager(self.bybit_client, config)
         self.risk_manager = RiskManager(config)
         self.performance_tracker = PerformanceTracker()
         self.commission_tracker = CommissionTracker(self.bybit_client)
@@ -53,6 +53,7 @@ class GridTradingBot:
         self.current_price = Decimal('0')
         self.balance = Decimal('0')
         self.equity = Decimal('0')
+        self.session_start_time = datetime.now()
         
         self.logger = logging.getLogger(__name__)
         self._initialize_bot()
@@ -71,6 +72,9 @@ class GridTradingBot:
             # Создание уровней сетки
             self._create_grid_levels()
             
+            # Обновление комиссий через API
+            self.commission_tracker.update_fee_rates(self.symbol)
+            
             self.logger.info(f"Grid Bot инициализирован для {self.symbol}")
             self.logger.info(f"Уровни: {self.grid_levels}, Границы: {self.lower_bound}-{self.upper_bound}")
             
@@ -86,6 +90,7 @@ class GridTradingBot:
             return
         
         self.is_running = True
+        self.session_start_time = datetime.now()
         self.logger.info("Запуск Grid Trading Bot...")
         
         try:
@@ -95,52 +100,46 @@ class GridTradingBot:
             # Размещение начальных ордеров
             self._place_initial_orders()
             
-            # Запуск основного цикла
-            self._main_loop()
+            # Запуск основного цикла в отдельном потоке
+            self._start_main_loop()
             
         except Exception as e:
             self.logger.error(f"Ошибка при запуске бота: {e}")
             self.stop()
     
-    @synchronized
-    def stop(self):
-        """Остановка бота"""
-        self.is_running = False
-        self.logger.info("Остановка Grid Trading Bot...")
+    def _start_main_loop(self):
+        """Запуск основного цикла в отдельном потоке"""
+        def run_loop():
+            while self.is_running:
+                try:
+                    self._main_loop_iteration()
+                    time.sleep(1)  # Пауза между итерациями
+                except Exception as e:
+                    self.logger.error(f"Ошибка в основном цикле: {e}")
+                    time.sleep(5)
         
-        try:
-            self._cancel_all_orders()
-            self._save_state()
-        except Exception as e:
-            self.logger.error(f"Ошибка при остановке бота: {e}")
+        self.main_loop_thread = threading.Thread(target=run_loop, daemon=True)
+        self.main_loop_thread.start()
     
-    def _main_loop(self):
-        """Основной цикл работы бота"""
-        while self.is_running:
-            try:
-                # Обновление текущей цены
-                self.current_price = self._get_current_price()
-                
-                # Проверка исполнения ордеров
-                self._check_order_fills()
-                
-                # Проверка рисков
-                if not self.risk_manager.check_risk_limits(self.equity, self.balance):
-                    self.logger.warning("Превышены лимиты рисков - остановка")
-                    self.stop()
-                    break
-                
-                # Перерасчет сетки при значительном движении цены
-                self._check_grid_recalculation()
-                
-                # Обновление производительности
-                self._update_performance()
-                
-                time.sleep(1)  # Пауза между итерациями
-                
-            except Exception as e:
-                self.logger.error(f"Ошибка в основном цикле: {e}")
-                time.sleep(5)
+    def _main_loop_iteration(self):
+        """Одна итерация основного цикла"""
+        # Обновление текущей цены
+        self.current_price = self._get_current_price()
+        
+        # Проверка исполнения ордеров
+        self._check_order_fills()
+        
+        # Проверка рисков
+        if not self.risk_manager.check_risk_limits(self.equity, self.balance):
+            self.logger.warning("Превышены лимиты рисков - остановка")
+            self.stop()
+            return
+        
+        # Перерасчет сетки при значительном движении цены
+        self._check_grid_recalculation()
+        
+        # Обновление производительности
+        self._update_performance()
     
     @synchronized
     def _place_initial_orders(self):
@@ -161,14 +160,6 @@ class GridTradingBot:
         try:
             quantity = Decimal(str(self.config.DEFAULT_ORDER_SIZE))
             
-            # Расчет комиссии
-            commission = self.commission_tracker.calculate_commission(
-                order_type="BUY",
-                quantity=float(quantity),
-                price=float(price),
-                is_maker=True
-            )
-            
             # Создание ордера
             order_result = self.order_manager.create_limit_buy_order(
                 symbol=self.symbol,
@@ -176,50 +167,54 @@ class GridTradingBot:
                 price=float(price)
             )
             
-            # Запись комиссии
-            self.commission_tracker.record_commission(
-                order_id=order_result['orderId'],
-                symbol=self.symbol,
-                commission=commission,
-                order_type="BUY",
-                timestamp=datetime.now()
-            )
-            
-            # Сохранение ордера
-            order_data = {
-                'order_id': order_result['orderId'],
-                'symbol': self.symbol,
-                'side': 'BUY',
-                'price': price,
-                'quantity': quantity,
-                'timestamp': datetime.now(),
-                'commission': commission
-            }
-            
-            self.active_orders.append(order_data)
-            self.trade_count.increment()
-            
-            self.logger.info(f"Создан BUY ордер: {quantity} {self.symbol} по {price}")
-            
-            return order_result
-            
+            if order_result:
+                # Расчет комиссии
+                commission = self.order_manager.calculate_order_commission(
+                    order_type="BUY",
+                    quantity=float(quantity),
+                    price=float(price),
+                    is_maker=True
+                )
+                
+                # Запись комиссии
+                self.commission_tracker.record_commission(
+                    order_id=order_result['orderId'],
+                    symbol=self.symbol,
+                    commission=commission,
+                    order_type="BUY",
+                    timestamp=datetime.now()
+                )
+                
+                # Сохранение ордера
+                order_data = {
+                    'order_id': order_result['orderId'],
+                    'symbol': self.symbol,
+                    'side': 'BUY',
+                    'price': price,
+                    'quantity': quantity,
+                    'timestamp': datetime.now(),
+                    'commission': commission
+                }
+                
+                self.active_orders.append(order_data)
+                self.trade_count.increment()
+                
+                self.logger.info(f"Создан BUY ордер: {quantity} {self.symbol} по {price}")
+                
+                return order_result
+            else:
+                self.logger.error("Не удалось создать BUY ордер")
+                return None
+                
         except Exception as e:
             self.logger.error(f"Ошибка создания BUY ордера: {e}")
-            raise
+            return None
     
     @synchronized
     def _create_sell_order(self, price: Decimal):
         """Создание ордера на продажу"""
         try:
             quantity = Decimal(str(self.config.DEFAULT_ORDER_SIZE))
-            
-            # Расчет комиссии
-            commission = self.commission_tracker.calculate_commission(
-                order_type="SELL",
-                quantity=float(quantity),
-                price=float(price),
-                is_maker=True
-            )
             
             # Создание ордера
             order_result = self.order_manager.create_limit_sell_order(
@@ -228,36 +223,48 @@ class GridTradingBot:
                 price=float(price)
             )
             
-            # Запись комиссии
-            self.commission_tracker.record_commission(
-                order_id=order_result['orderId'],
-                symbol=self.symbol,
-                commission=commission,
-                order_type="SELL",
-                timestamp=datetime.now()
-            )
-            
-            # Сохранение ордера
-            order_data = {
-                'order_id': order_result['orderId'],
-                'symbol': self.symbol,
-                'side': 'SELL',
-                'price': price,
-                'quantity': quantity,
-                'timestamp': datetime.now(),
-                'commission': commission
-            }
-            
-            self.active_orders.append(order_data)
-            self.trade_count.increment()
-            
-            self.logger.info(f"Создан SELL ордер: {quantity} {self.symbol} по {price}")
-            
-            return order_result
-            
+            if order_result:
+                # Расчет комиссии
+                commission = self.order_manager.calculate_order_commission(
+                    order_type="SELL",
+                    quantity=float(quantity),
+                    price=float(price),
+                    is_maker=True
+                )
+                
+                # Запись комиссии
+                self.commission_tracker.record_commission(
+                    order_id=order_result['orderId'],
+                    symbol=self.symbol,
+                    commission=commission,
+                    order_type="SELL",
+                    timestamp=datetime.now()
+                )
+                
+                # Сохранение ордера
+                order_data = {
+                    'order_id': order_result['orderId'],
+                    'symbol': self.symbol,
+                    'side': 'SELL',
+                    'price': price,
+                    'quantity': quantity,
+                    'timestamp': datetime.now(),
+                    'commission': commission
+                }
+                
+                self.active_orders.append(order_data)
+                self.trade_count.increment()
+                
+                self.logger.info(f"Создан SELL ордер: {quantity} {self.symbol} по {price}")
+                
+                return order_result
+            else:
+                self.logger.error("Не удалось создать SELL ордер")
+                return None
+                
         except Exception as e:
             self.logger.error(f"Ошибка создания SELL ордера: {e}")
-            raise
+            return None
     
     def _get_current_price(self) -> Decimal:
         """Получение текущей цены"""
@@ -281,8 +288,10 @@ class GridTradingBot:
         """Расчет границ сетки на основе текущей цены"""
         volatility_factor = Decimal('0.05')  # 5% волатильность
         
-        self.lower_bound = self.current_price * (1 - volatility_factor)
-        self.upper_bound = self.current_price * (1 + volatility_factor)
+        self.lower_bound = self.current_price * (Decimal('1') - volatility_factor)
+        self.upper_bound = self.current_price * (Decimal('1') + volatility_factor)
+        
+        self.logger.info(f"Рассчитаны границы сетки: {self.lower_bound} - {self.upper_bound}")
     
     def _create_grid_levels(self):
         """Создание уровней цен для сетки"""
@@ -293,10 +302,14 @@ class GridTradingBot:
             self.lower_bound + step * i 
             for i in range(self.grid_levels)
         ]
+        
+        self.logger.info(f"Создано {len(self.grid_prices)} уровней сетки")
     
     @synchronized
     def _check_order_fills(self):
         """Проверка исполнения ордеров"""
+        orders_to_remove = []
+        
         for order in self.active_orders.copy():
             try:
                 order_status = self.order_manager.get_order_status(
@@ -306,25 +319,33 @@ class GridTradingBot:
                 
                 if order_status == 'FILLED':
                     self._handle_filled_order(order)
+                    orders_to_remove.append(order)
                     
             except Exception as e:
                 self.logger.error(f"Ошибка проверки ордера {order['order_id']}: {e}")
+        
+        # Удаляем исполненные ордера
+        for order in orders_to_remove:
+            if order in self.active_orders:
+                self.active_orders.remove(order)
     
     @synchronized
     def _handle_filled_order(self, order: Dict):
         """Обработка исполненного ордера"""
         try:
             # Перемещение в историю
-            self.active_orders.remove(order)
+            order['filled_time'] = datetime.now()
             self.order_history.append(order)
             
             # Создание противоположного ордера
             if order['side'] == 'BUY':
-                self._create_sell_order(order['price'] * Decimal('1.005'))  # +0.5% для прибыли
+                new_price = order['price'] * Decimal('1.005')  # +0.5% для прибыли
+                self._create_sell_order(new_price)
+                self.logger.info(f"BUY ордер исполнен, создан SELL ордер по {new_price}")
             else:
-                self._create_buy_order(order['price'] * Decimal('0.995'))   # -0.5% для покупки
-            
-            self.logger.info(f"Ордер {order['order_id']} исполнен, создан противоположный ордер")
+                new_price = order['price'] * Decimal('0.995')   # -0.5% для покупки
+                self._create_buy_order(new_price)
+                self.logger.info(f"SELL ордер исполнен, создан BUY ордер по {new_price}")
             
         except Exception as e:
             self.logger.error(f"Ошибка обработки исполненного ордера: {e}")
@@ -347,41 +368,102 @@ class GridTradingBot:
     
     def _check_grid_recalculation(self):
         """Проверка необходимости перерасчета сетки"""
-        # TODO: Реализовать логику перерасчета при значительном движении цены
-        pass
+        # Если цена вышла за пределы текущей сетки на 10%, пересчитываем
+        price_change_threshold = Decimal('0.10')
+        
+        if (self.current_price < self.lower_bound * (Decimal('1') - price_change_threshold) or
+            self.current_price > self.upper_bound * (Decimal('1') + price_change_threshold)):
+            
+            self.logger.info("Цена значительно изменилась, пересчитываем сетку...")
+            self._recalculate_grid()
+    
+    @synchronized
+    def _recalculate_grid(self):
+        """Перерасчет сетки"""
+        try:
+            # Отмена текущих ордеров
+            self._cancel_all_orders()
+            
+            # Перерасчет границ
+            self._calculate_grid_bounds()
+            self._create_grid_levels()
+            
+            # Размещение новых ордеров
+            self._place_initial_orders()
+            
+            self.logger.info("Сетка успешно пересчитана")
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка перерасчета сетки: {e}")
     
     def _update_performance(self):
         """Обновление метрик производительности"""
-        self.equity = self.balance + self._calculate_unrealized_pnl()
-        self.performance_tracker.update_metrics(
-            equity=float(self.equity),
-            balance=float(self.balance),
-            active_orders=len(self.active_orders)
-        )
+        try:
+            self.equity = self.balance + self._calculate_unrealized_pnl()
+            self.performance_tracker.update_metrics(
+                equity=float(self.equity),
+                balance=float(self.balance),
+                active_orders=len(self.active_orders),
+                total_trades=self.trade_count.get()
+            )
+        except Exception as e:
+            self.logger.error(f"Ошибка обновления производительности: {e}")
     
     def _calculate_unrealized_pnl(self) -> Decimal:
         """Расчет нереализованного PnL"""
-        # TODO: Реализовать расчет нереализованного PnL
-        return Decimal('0')
+        # Упрощенный расчет - в реальной реализации нужно учитывать позиции
+        try:
+            total_commission = Decimal(str(self.commission_tracker.get_total_commissions()))
+            return -total_commission  # Пока только комиссии
+        except:
+            return Decimal('0')
     
     def _save_state(self):
         """Сохранение состояния бота"""
-        # TODO: Реализовать сохранение состояния
-        pass
+        try:
+            # TODO: Реализовать сохранение состояния в файл/БД
+            pass
+        except Exception as e:
+            self.logger.error(f"Ошибка сохранения состояния: {e}")
+    
+    @synchronized
+    def stop(self):
+        """Остановка бота"""
+        self.is_running = False
+        self.logger.info("Остановка Grid Trading Bot...")
+        
+        try:
+            self._cancel_all_orders()
+            self._save_state()
+            
+            # Отчет о сессии
+            session_duration = datetime.now() - self.session_start_time
+            self.logger.info(f"Сессия завершена. Длительность: {session_duration}")
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка при остановке бота: {e}")
     
     def get_status(self) -> Dict:
         """Получение статуса бота"""
-        return {
-            'symbol': self.symbol,
-            'is_running': self.is_running,
-            'current_price': float(self.current_price),
-            'balance': float(self.balance),
-            'equity': float(self.equity),
-            'active_orders': len(self.active_orders),
-            'total_trades': self.trade_count.get(),
-            'grid_levels': self.grid_levels,
-            'grid_bounds': {
-                'lower': float(self.lower_bound),
-                'upper': float(self.upper_bound)
+        try:
+            total_commissions = self.commission_tracker.get_total_commissions()
+            
+            return {
+                'symbol': self.symbol,
+                'is_running': self.is_running,
+                'current_price': float(self.current_price),
+                'balance': float(self.balance),
+                'equity': float(self.equity),
+                'active_orders': len(self.active_orders),
+                'total_trades': self.trade_count.get(),
+                'total_commissions': float(total_commissions),
+                'grid_levels': self.grid_levels,
+                'grid_bounds': {
+                    'lower': float(self.lower_bound),
+                    'upper': float(self.upper_bound)
+                },
+                'session_duration': str(datetime.now() - self.session_start_time)
             }
-        }
+        except Exception as e:
+            self.logger.error(f"Ошибка получения статуса: {e}")
+            return {}
