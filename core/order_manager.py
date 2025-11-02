@@ -1,5 +1,5 @@
 """
-Order Manager v9.1 - Управление ордерами с исправлениями
+Order Manager v9.1 - ПОЛНОСТЬЮ ПЕРЕРАБОТАННЫЙ КОД
 """
 
 import logging
@@ -12,20 +12,21 @@ from utils.bybit_client import BybitClient
 
 
 class OrderManager:
-    """Менеджер ордеров с Thread Safety"""
+    """Менеджер ордеров с полными исправлениями"""
     
-    def __init__(self, bybit_client: BybitClient):
+    def __init__(self, bybit_client: BybitClient, config):
         self.client = bybit_client
+        self.config = config
         self.logger = logging.getLogger(__name__)
         
-        # Конфигурация комиссий
-        self.maker_fee_rate = 0.0001  # 0.01%
-        self.taker_fee_rate = 0.0006  # 0.06%
+        # Конфигурация комиссий из config
+        self.maker_fee_rate = getattr(config, 'MAKER_FEE_RATE', 0.0001)
+        self.taker_fee_rate = getattr(config, 'TAKER_FEE_RATE', 0.0006)
         
-        self.logger.info("Order Manager инициализирован")
+        self.logger.info(f"Order Manager инициализирован. Комиссии: maker={self.maker_fee_rate}, taker={self.taker_fee_rate}")
     
     @synchronized
-    def create_limit_buy_order(self, symbol: str, quantity: float, price: float) -> Dict:
+    def create_limit_buy_order(self, symbol: str, quantity: float, price: float) -> Optional[Dict]:
         """Создание лимитного ордера на покупку"""
         try:
             order_params = {
@@ -39,22 +40,26 @@ class OrderManager:
             
             response = self.client.place_order(**order_params)
             
-            self.logger.info(f"Создан LIMIT BUY ордер: {quantity} {symbol} по {price}")
-            return {
-                'orderId': response['orderId'],
-                'symbol': symbol,
-                'side': 'BUY',
-                'price': price,
-                'quantity': quantity,
-                'timestamp': datetime.now()
-            }
+            if response and 'orderId' in response:
+                self.logger.info(f"Создан LIMIT BUY ордер: {quantity} {symbol} по {price}")
+                return {
+                    'orderId': response['orderId'],
+                    'symbol': symbol,
+                    'side': 'BUY',
+                    'price': price,
+                    'quantity': quantity,
+                    'timestamp': datetime.now()
+                }
+            else:
+                self.logger.error(f"Не удалось создать BUY ордер. Ответ: {response}")
+                return None
             
         except Exception as e:
             self.logger.error(f"Ошибка создания BUY ордера: {e}")
-            raise
+            return None
     
     @synchronized
-    def create_limit_sell_order(self, symbol: str, quantity: float, price: float) -> Dict:
+    def create_limit_sell_order(self, symbol: str, quantity: float, price: float) -> Optional[Dict]:
         """Создание лимитного ордера на продажу"""
         try:
             order_params = {
@@ -68,22 +73,26 @@ class OrderManager:
             
             response = self.client.place_order(**order_params)
             
-            self.logger.info(f"Создан LIMIT SELL ордер: {quantity} {symbol} по {price}")
-            return {
-                'orderId': response['orderId'],
-                'symbol': symbol,
-                'side': 'SELL',
-                'price': price,
-                'quantity': quantity,
-                'timestamp': datetime.now()
-            }
+            if response and 'orderId' in response:
+                self.logger.info(f"Создан LIMIT SELL ордер: {quantity} {symbol} по {price}")
+                return {
+                    'orderId': response['orderId'],
+                    'symbol': symbol,
+                    'side': 'SELL',
+                    'price': price,
+                    'quantity': quantity,
+                    'timestamp': datetime.now()
+                }
+            else:
+                self.logger.error(f"Не удалось создать SELL ордер. Ответ: {response}")
+                return None
             
         except Exception as e:
             self.logger.error(f"Ошибка создания SELL ордера: {e}")
-            raise
+            return None
     
     @synchronized
-    def create_market_buy_order(self, symbol: str, quantity: float) -> Dict:
+    def create_market_buy_order(self, symbol: str, quantity: float) -> Optional[Dict]:
         """Создание маркет ордера на покупку"""
         try:
             order_params = {
@@ -95,21 +104,25 @@ class OrderManager:
             
             response = self.client.place_order(**order_params)
             
-            self.logger.info(f"Создан MARKET BUY ордер: {quantity} {symbol}")
-            return {
-                'orderId': response['orderId'],
-                'symbol': symbol,
-                'side': 'BUY',
-                'quantity': quantity,
-                'timestamp': datetime.now()
-            }
+            if response and 'orderId' in response:
+                self.logger.info(f"Создан MARKET BUY ордер: {quantity} {symbol}")
+                return {
+                    'orderId': response['orderId'],
+                    'symbol': symbol,
+                    'side': 'BUY',
+                    'quantity': quantity,
+                    'timestamp': datetime.now()
+                }
+            else:
+                self.logger.error(f"Не удалось создать MARKET BUY ордер. Ответ: {response}")
+                return None
             
         except Exception as e:
             self.logger.error(f"Ошибка создания MARKET BUY ордера: {e}")
-            raise
+            return None
     
     @synchronized
-    def create_market_sell_order(self, symbol: str, quantity: float) -> Dict:
+    def create_market_sell_order(self, symbol: str, quantity: float) -> Optional[Dict]:
         """Создание маркет ордера на продажу"""
         try:
             order_params = {
@@ -121,18 +134,22 @@ class OrderManager:
             
             response = self.client.place_order(**order_params)
             
-            self.logger.info(f"Создан MARKET SELL ордер: {quantity} {symbol}")
-            return {
-                'orderId': response['orderId'],
-                'symbol': symbol,
-                'side': 'SELL',
-                'quantity': quantity,
-                'timestamp': datetime.now()
-            }
+            if response and 'orderId' in response:
+                self.logger.info(f"Создан MARKET SELL ордер: {quantity} {symbol}")
+                return {
+                    'orderId': response['orderId'],
+                    'symbol': symbol,
+                    'side': 'SELL',
+                    'quantity': quantity,
+                    'timestamp': datetime.now()
+                }
+            else:
+                self.logger.error(f"Не удалось создать MARKET SELL ордер. Ответ: {response}")
+                return None
             
         except Exception as e:
             self.logger.error(f"Ошибка создания MARKET SELL ордера: {e}")
-            raise
+            return None
     
     @synchronized
     def cancel_order(self, symbol: str, order_id: str) -> bool:
@@ -145,8 +162,12 @@ class OrderManager:
             
             response = self.client.cancel_order(**cancel_params)
             
-            self.logger.info(f"Ордер {order_id} отменен")
-            return True
+            if response:
+                self.logger.info(f"Ордер {order_id} отменен")
+                return True
+            else:
+                self.logger.error(f"Не удалось отменить ордер {order_id}")
+                return False
             
         except Exception as e:
             self.logger.error(f"Ошибка отмены ордера {order_id}: {e}")
@@ -162,8 +183,12 @@ class OrderManager:
             
             response = self.client.cancel_all_orders(**cancel_params)
             
-            self.logger.info(f"Все ордера для {symbol} отменены")
-            return True
+            if response:
+                self.logger.info(f"Все ордера для {symbol} отменены")
+                return True
+            else:
+                self.logger.error(f"Не удалось отменить все ордера для {symbol}")
+                return False
             
         except Exception as e:
             self.logger.error(f"Ошибка отмены всех ордеров для {symbol}: {e}")
@@ -179,7 +204,12 @@ class OrderManager:
             }
             
             response = self.client.get_order(**order_params)
-            return response['status']
+            
+            if response and 'status' in response:
+                return response['status']
+            else:
+                self.logger.warning(f"Не удалось получить статус ордера {order_id}")
+                return 'UNKNOWN'
             
         except Exception as e:
             self.logger.error(f"Ошибка получения статуса ордера {order_id}: {e}")
@@ -190,7 +220,12 @@ class OrderManager:
         """Получение списка активных ордеров"""
         try:
             response = self.client.get_open_orders(symbol=symbol)
-            return response.get('list', [])
+            
+            if response and 'list' in response:
+                return response.get('list', [])
+            else:
+                self.logger.warning(f"Не удалось получить активные ордера для {symbol}")
+                return []
             
         except Exception as e:
             self.logger.error(f"Ошибка получения активных ордеров для {symbol}: {e}")
@@ -201,7 +236,12 @@ class OrderManager:
         """Получение истории ордеров"""
         try:
             response = self.client.get_order_history(symbol=symbol, limit=limit)
-            return response.get('list', [])
+            
+            if response and 'list' in response:
+                return response.get('list', [])
+            else:
+                self.logger.warning(f"Не удалось получить историю ордеров для {symbol}")
+                return []
             
         except Exception as e:
             self.logger.error(f"Ошибка получения истории ордеров для {symbol}: {e}")
@@ -217,15 +257,19 @@ class OrderManager:
                 'orderId': order_id
             }
             
-            if new_price:
+            if new_price is not None:
                 modify_params['price'] = str(new_price)
-            if new_quantity:
+            if new_quantity is not None:
                 modify_params['qty'] = str(new_quantity)
             
             response = self.client.modify_order(**modify_params)
             
-            self.logger.info(f"Ордер {order_id} изменен")
-            return True
+            if response:
+                self.logger.info(f"Ордер {order_id} изменен")
+                return True
+            else:
+                self.logger.error(f"Не удалось изменить ордер {order_id}")
+                return False
             
         except Exception as e:
             self.logger.error(f"Ошибка изменения ордера {order_id}: {e}")
@@ -234,20 +278,25 @@ class OrderManager:
     def calculate_order_commission(self, order_type: str, quantity: float, 
                                  price: float, is_maker: bool = True) -> float:
         """Расчет комиссии для ордера"""
-        trade_value = quantity * price
-        fee_rate = self.maker_fee_rate if is_maker else self.taker_fee_rate
-        commission = trade_value * fee_rate
-        
-        self.logger.debug(f"Рассчитана комиссия: {commission:.6f} для ордера {order_type}")
-        return commission
+        try:
+            trade_value = quantity * price
+            fee_rate = self.maker_fee_rate if is_maker else self.taker_fee_rate
+            commission = trade_value * fee_rate
+            
+            self.logger.debug(f"Рассчитана комиссия: {commission:.6f} для ордера {order_type}")
+            return commission
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка расчета комиссии: {e}")
+            return 0.0
     
     @synchronized
     def get_filled_quantity(self, symbol: str, order_id: str) -> float:
         """Получение исполненного количества"""
         try:
-            order_status = self.get_order_status(symbol, order_id)
-            if order_status == 'FILLED':
-                order_info = self.client.get_order(symbol=symbol, orderId=order_id)
+            order_info = self.client.get_order(symbol=symbol, orderId=order_id)
+            
+            if order_info and 'executedQty' in order_info:
                 return float(order_info.get('executedQty', 0))
             return 0.0
             
@@ -274,3 +323,10 @@ class OrderManager:
         
         self.logger.warning(f"Таймаут ожидания исполнения ордера {order_id}")
         return False
+    
+    def get_fee_rates(self) -> Dict[str, float]:
+        """Получение текущих ставок комиссий"""
+        return {
+            'maker_fee_rate': self.maker_fee_rate,
+            'taker_fee_rate': self.taker_fee_rate
+        }
