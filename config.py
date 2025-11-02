@@ -5,12 +5,12 @@
 DEMO_MODE = True  # True для демо-торговли, False для реальной
 
 # ==================== BYBIT API КЛЮЧИ ====================
-BYBIT_API_KEY = "7sgdqpHkCOVHJ9h5IE"
-BYBIT_API_SECRET = "pO9jp5elzvyn8UxwU3UIaLoCUqX3Y9ICVJHZ"
+BYBIT_API_KEY = "not_to_github"
+BYBIT_API_SECRET = "not_to_github"
 
 # ==================== TELEGRAM НАСТРОЙКИ ====================
-TELEGRAM_TOKEN = "8070249499:AAEpc4O6Wm6vsXa-dXksXNIhshY3GJq9wqY"
-TELEGRAM_CHAT_ID = "284000238"
+TELEGRAM_TOKEN = "not_to_github"
+TELEGRAM_CHAT_ID = "not_to_github"
 
 # ==================== ПАРАМЕТРЫ ТОРГОВЛИ ====================
 SYMBOL = "BTCUSDT"              # Торговая пара
