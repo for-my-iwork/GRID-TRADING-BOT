@@ -1,157 +1,276 @@
-# core/order_manager.py
 """
-🤖 УПРАВЛЕНИЕ ОРДЕРАМИ ДЛЯ GRID BOT v9.1
+Order Manager v9.1 - Управление ордерами с исправлениями
 """
 
-from core.thread_safe import SafeList, AtomicCounter
-from decimal import Decimal
+import logging
+import time
+from datetime import datetime
+from typing import Dict, List, Optional
+
+from core.thread_safe import synchronized
+from utils.bybit_client import BybitClient
+
 
 class OrderManager:
-    """🤖 УПРАВЛЕНИЕ ОРДЕРАМИ ДЛЯ GRID BOT v9.1"""
+    """Менеджер ордеров с Thread Safety"""
     
-    def __init__(self, api_client):
-        self.api_client = api_client
+    def __init__(self, bybit_client: BybitClient):
+        self.client = bybit_client
+        self.logger = logging.getLogger(__name__)
         
-        # ==================== ПОТОКОБЕЗОПАСНЫЕ СТРУКТУРЫ ====================
-        self.active_order_ids = SafeList()
-        self.total_orders_created = AtomicCounter(0)
-        self.orders_lock = SafeList()
-
-    def create_grid(self, symbol, grid_levels, order_size, grid_spacing, current_price, commission_tracker):
-        """🎯 СОЗДАНИЕ СЕТКИ ОРДЕРОВ С ТОЧНЫМ УЧЕТОМ КОМИССИЙ"""
-        buy_prices = [round(current_price * (1 - i * grid_spacing), 1) for i in range(1, grid_levels + 1)]
-        sell_prices = [round(current_price * (1 + i * grid_spacing), 1) for i in range(1, grid_levels + 1)]
+        # Конфигурация комиссий
+        self.maker_fee_rate = 0.0001  # 0.01%
+        self.taker_fee_rate = 0.0006  # 0.06%
         
-        print(f"📥 Уровни покупки: {[f'{p:,.1f}' for p in buy_prices]}")
-        print(f"📤 Уровни продажи: {[f'{p:,.1f}' for p in sell_prices]}")
-        
-        orders_placed = 0
-        self.active_order_ids.clear()
-        
-        usdt_balance, btc_balance = self.api_client.get_balance()
-        
-        # Размещаем ордера на покупку
-        for price in buy_prices:
-            required_usdt = order_size * price * 1.1
-            if usdt_balance > required_usdt:
-                try:
-                    order = self.api_client.place_order(
-                        symbol=symbol,
-                        side="Buy",
-                        order_type="Limit",
-                        qty=order_size,
-                        price=price,
-                        time_in_force="GTC"
-                    )
-                    
-                    if order and 'result' in order and 'orderId' in order['result']:
-                        order_id = order['result']['orderId']
-                        self.active_order_ids.append(order_id)
-                        orders_placed += 1
-                        self.total_orders_created.increment()
-                        
-                        # Расчет комиссии с использованием commission_tracker
-                        commission = commission_tracker.calculate_commission(
-                            symbol, Decimal(str(order_size)), Decimal(str(price)), is_maker=True
-                        )
-                        
-                        print(f"✅ Buy ордер: {order_size} BTC по {price:.1f}, комиссия: {commission:.6f} USDT")
-                    else:
-                        print(f"❌ Ошибка размещения Buy ордера")
-                        
-                except Exception as e:
-                    print(f"❌ Ошибка Buy ордера: {e}")
-            else:
-                print(f"⚠️ Недостаточно USDT для Buy ордера по {price:.1f}")
-        
-        # Размещаем ордера на продажу
-        for price in sell_prices:
-            if btc_balance > order_size:
-                try:
-                    order = self.api_client.place_order(
-                        symbol=symbol,
-                        side="Sell",
-                        order_type="Limit",
-                        qty=order_size,
-                        price=price,
-                        time_in_force="GTC"
-                    )
-                    
-                    if order and 'result' in order and 'orderId' in order['result']:
-                        order_id = order['result']['orderId']
-                        self.active_order_ids.append(order_id)
-                        orders_placed += 1
-                        self.total_orders_created.increment()
-                        
-                        # Расчет комиссии с использованием commission_tracker
-                        commission = commission_tracker.calculate_commission(
-                            symbol, Decimal(str(order_size)), Decimal(str(price)), is_maker=True
-                        )
-                        
-                        print(f"✅ Sell ордер: {order_size} BTC по {price:.1f}, комиссия: {commission:.6f} USDT")
-                    else:
-                        print(f"❌ Ошибка размещения Sell ордера")
-                        
-                except Exception as e:
-                    print(f"❌ Ошибка Sell ордера: {e}")
-            else:
-                print(f"⚠️ Недостаточно BTC для Sell ордера по {price:.1f}")
-        
-        print(f"📊 Размещено ордеров: {orders_placed}")
-        print(f"📈 Всего ордеров создано: {self.total_orders_created.value}")
-        return orders_placed
-
-    def cancel_all_orders(self, symbol):
-        """🛑 ОТМЕНА ВСЕХ ОРДЕРОВ"""
+        self.logger.info("Order Manager инициализирован")
+    
+    @synchronized
+    def create_limit_buy_order(self, symbol: str, quantity: float, price: float) -> Dict:
+        """Создание лимитного ордера на покупку"""
         try:
-            result = self.api_client.cancel_all_orders(symbol)
-            self.active_order_ids.clear()
-            print("✅ Все ордера отменены")
+            order_params = {
+                'symbol': symbol,
+                'side': 'Buy',
+                'orderType': 'Limit',
+                'qty': str(quantity),
+                'price': str(price),
+                'timeInForce': 'GTC'
+            }
+            
+            response = self.client.place_order(**order_params)
+            
+            self.logger.info(f"Создан LIMIT BUY ордер: {quantity} {symbol} по {price}")
+            return {
+                'orderId': response['orderId'],
+                'symbol': symbol,
+                'side': 'BUY',
+                'price': price,
+                'quantity': quantity,
+                'timestamp': datetime.now()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания BUY ордера: {e}")
+            raise
+    
+    @synchronized
+    def create_limit_sell_order(self, symbol: str, quantity: float, price: float) -> Dict:
+        """Создание лимитного ордера на продажу"""
+        try:
+            order_params = {
+                'symbol': symbol,
+                'side': 'Sell',
+                'orderType': 'Limit',
+                'qty': str(quantity),
+                'price': str(price),
+                'timeInForce': 'GTC'
+            }
+            
+            response = self.client.place_order(**order_params)
+            
+            self.logger.info(f"Создан LIMIT SELL ордер: {quantity} {symbol} по {price}")
+            return {
+                'orderId': response['orderId'],
+                'symbol': symbol,
+                'side': 'SELL',
+                'price': price,
+                'quantity': quantity,
+                'timestamp': datetime.now()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания SELL ордера: {e}")
+            raise
+    
+    @synchronized
+    def create_market_buy_order(self, symbol: str, quantity: float) -> Dict:
+        """Создание маркет ордера на покупку"""
+        try:
+            order_params = {
+                'symbol': symbol,
+                'side': 'Buy',
+                'orderType': 'Market',
+                'qty': str(quantity)
+            }
+            
+            response = self.client.place_order(**order_params)
+            
+            self.logger.info(f"Создан MARKET BUY ордер: {quantity} {symbol}")
+            return {
+                'orderId': response['orderId'],
+                'symbol': symbol,
+                'side': 'BUY',
+                'quantity': quantity,
+                'timestamp': datetime.now()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания MARKET BUY ордера: {e}")
+            raise
+    
+    @synchronized
+    def create_market_sell_order(self, symbol: str, quantity: float) -> Dict:
+        """Создание маркет ордера на продажу"""
+        try:
+            order_params = {
+                'symbol': symbol,
+                'side': 'Sell',
+                'orderType': 'Market',
+                'qty': str(quantity)
+            }
+            
+            response = self.client.place_order(**order_params)
+            
+            self.logger.info(f"Создан MARKET SELL ордер: {quantity} {symbol}")
+            return {
+                'orderId': response['orderId'],
+                'symbol': symbol,
+                'side': 'SELL',
+                'quantity': quantity,
+                'timestamp': datetime.now()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания MARKET SELL ордера: {e}")
+            raise
+    
+    @synchronized
+    def cancel_order(self, symbol: str, order_id: str) -> bool:
+        """Отмена ордера"""
+        try:
+            cancel_params = {
+                'symbol': symbol,
+                'orderId': order_id
+            }
+            
+            response = self.client.cancel_order(**cancel_params)
+            
+            self.logger.info(f"Ордер {order_id} отменен")
             return True
+            
         except Exception as e:
-            print(f"⚠️ Ошибка при отмене ордеров: {e}")
+            self.logger.error(f"Ошибка отмены ордера {order_id}: {e}")
             return False
-
-    def get_active_orders_count(self, symbol):
-        """📋 ПОЛУЧЕНИЕ КОЛИЧЕСТВА АКТИВНЫХ ОРДЕРОВ"""
+    
+    @synchronized
+    def cancel_all_orders(self, symbol: str) -> bool:
+        """Отмена всех ордеров для символа"""
         try:
-            orders = self.api_client.get_open_orders(symbol)
-            if (orders and 
-                'result' in orders and 
-                'list' in orders['result']):
-                active_count = len(orders['result']['list'])
-                
-                # Синхронизация с нашим внутренним списком
-                current_active_ids = [order['orderId'] for order in orders['result']['list']]
-                self.active_order_ids.clear()
-                for order_id in current_active_ids:
-                    self.active_order_ids.append(order_id)
-                    
-                return active_count
-            return 0
+            cancel_params = {
+                'symbol': symbol
+            }
+            
+            response = self.client.cancel_all_orders(**cancel_params)
+            
+            self.logger.info(f"Все ордера для {symbol} отменены")
+            return True
+            
         except Exception as e:
-            print(f"❌ Ошибка получения активных ордеров: {e}")
-            return len(self.active_order_ids)  # Fallback to internal count
-
-    def get_order_statistics(self):
-        """📊 СТАТИСТИКА ОРДЕРОВ"""
-        return {
-            'total_orders_created': self.total_orders_created.value,
-            'active_orders': len(self.active_order_ids),
-            'order_ids': self.active_order_ids.copy()
-        }
-
-    def remove_order(self, order_id):
-        """🗑️ УДАЛЕНИЕ ОРДЕРА ИЗ АКТИВНЫХ"""
+            self.logger.error(f"Ошибка отмены всех ордеров для {symbol}: {e}")
+            return False
+    
+    @synchronized
+    def get_order_status(self, symbol: str, order_id: str) -> str:
+        """Получение статуса ордера"""
         try:
-            if order_id in self.active_order_ids:
-                self.active_order_ids.remove(order_id)
+            order_params = {
+                'symbol': symbol,
+                'orderId': order_id
+            }
+            
+            response = self.client.get_order(**order_params)
+            return response['status']
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка получения статуса ордера {order_id}: {e}")
+            return 'UNKNOWN'
+    
+    @synchronized
+    def get_active_orders(self, symbol: str) -> List[Dict]:
+        """Получение списка активных ордеров"""
+        try:
+            response = self.client.get_open_orders(symbol=symbol)
+            return response.get('list', [])
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка получения активных ордеров для {symbol}: {e}")
+            return []
+    
+    @synchronized
+    def get_order_history(self, symbol: str, limit: int = 100) -> List[Dict]:
+        """Получение истории ордеров"""
+        try:
+            response = self.client.get_order_history(symbol=symbol, limit=limit)
+            return response.get('list', [])
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка получения истории ордеров для {symbol}: {e}")
+            return []
+    
+    @synchronized
+    def modify_order(self, symbol: str, order_id: str, new_price: float = None, 
+                    new_quantity: float = None) -> bool:
+        """Изменение ордера"""
+        try:
+            modify_params = {
+                'symbol': symbol,
+                'orderId': order_id
+            }
+            
+            if new_price:
+                modify_params['price'] = str(new_price)
+            if new_quantity:
+                modify_params['qty'] = str(new_quantity)
+            
+            response = self.client.modify_order(**modify_params)
+            
+            self.logger.info(f"Ордер {order_id} изменен")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка изменения ордера {order_id}: {e}")
+            return False
+    
+    def calculate_order_commission(self, order_type: str, quantity: float, 
+                                 price: float, is_maker: bool = True) -> float:
+        """Расчет комиссии для ордера"""
+        trade_value = quantity * price
+        fee_rate = self.maker_fee_rate if is_maker else self.taker_fee_rate
+        commission = trade_value * fee_rate
+        
+        self.logger.debug(f"Рассчитана комиссия: {commission:.6f} для ордера {order_type}")
+        return commission
+    
+    @synchronized
+    def get_filled_quantity(self, symbol: str, order_id: str) -> float:
+        """Получение исполненного количества"""
+        try:
+            order_status = self.get_order_status(symbol, order_id)
+            if order_status == 'FILLED':
+                order_info = self.client.get_order(symbol=symbol, orderId=order_id)
+                return float(order_info.get('executedQty', 0))
+            return 0.0
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка получения исполненного количества для {order_id}: {e}")
+            return 0.0
+    
+    def wait_for_order_fill(self, symbol: str, order_id: str, 
+                          timeout: int = 30) -> bool:
+        """Ожидание исполнения ордера"""
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            status = self.get_order_status(symbol, order_id)
+            
+            if status == 'FILLED':
+                self.logger.info(f"Ордер {order_id} исполнен")
                 return True
-            return False
-        except Exception as e:
-            print(f"❌ Ошибка удаления ордера {order_id}: {e}")
-            return False
-
-    def cleanup(self):
-        """🧹 ОЧИСТКА РЕСУРСОВ"""
-        self.active_order_ids.clear()
+            elif status in ['CANCELED', 'REJECTED', 'EXPIRED']:
+                self.logger.warning(f"Ордер {order_id} не исполнен, статус: {status}")
+                return False
+            
+            time.sleep(1)  # Пауза между проверками
+        
+        self.logger.warning(f"Таймаут ожидания исполнения ордера {order_id}")
+        return False
