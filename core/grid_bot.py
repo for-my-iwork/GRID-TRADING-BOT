@@ -16,13 +16,24 @@ from analytics.logger import DataLogger
 from analytics.reporter import ReportGenerator
 from core.risk_manager import RiskManager
 from core.order_manager import OrderManager
+from core.commission_tracker import CommissionTracker
 
 class AdvancedGridBotV90:
     """🚀 ОСНОВНОЙ КЛАСС GRID TRADING BOT"""
     
     def __init__(self):
         """Инициализация бота с настройками из config.py"""
-        
+
+        # ==================== НАСТРОЙКИ ИЗ CONFIG ====================
+        self.symbol = SYMBOL
+
+        # ==================== ПАРАМЕТРЫ СЕТКИ ПО УМОЛЧАНИЮ ====================
+        self.grid_levels = DEFAULT_GRID_LEVELS
+        self.order_size = DEFAULT_ORDER_SIZE
+        self.grid_spacing = DEFAULT_GRID_SPACING
+        self.monitoring_duration = 240
+        self.grid_refresh_time = 1800
+
         # ==================== ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТОВ ====================
         self.api_client = APIClient()
         self.market_analyzer = MarketAnalyzer(self.api_client)
@@ -32,16 +43,9 @@ class AdvancedGridBotV90:
         self.reporter = ReportGenerator(self.telegram_bot)
         self.risk_manager = RiskManager()
         self.order_manager = OrderManager(self.api_client)
-        
-        # ==================== НАСТРОЙКИ ИЗ CONFIG ====================
-        self.symbol = SYMBOL
-        
-        # ==================== ПАРАМЕТРЫ СЕТКИ ПО УМОЛЧАНИЮ ====================
-        self.grid_levels = DEFAULT_GRID_LEVELS
-        self.order_size = DEFAULT_ORDER_SIZE
-        self.grid_spacing = DEFAULT_GRID_SPACING
-        self.monitoring_duration = 240
-        self.grid_refresh_time = 1800
+
+        # ==================== КОМИССИИ ====================
+        self.commission_tracker = CommissionTracker(self.api_client, self.symbol)  # Теперь self.symbol существует
         
         # ==================== СТАТИСТИКА И МОНИТОРИНГ ====================
         self.total_commission = 0
@@ -55,6 +59,7 @@ class AdvancedGridBotV90:
         
         # ==================== СЧЕТЧИКИ ОШИБОК ====================
         self.api_errors = 0
+        self.max_api_errors = MAX_API_ERRORS  # ИЗ КОНФИГА
         self.connection_retries = 0
         self.max_connection_retries = 100
         
@@ -88,6 +93,14 @@ class AdvancedGridBotV90:
         if balance == (0, 0):
             print("❌ Не удалось получить баланс")
             return False
+        
+        # 🔄 ДОБАВИТЬ ЭТОТ БЛОК - Инициализация комиссий
+        print("💰 Загрузка актуальных комиссий...")
+        if self.commission_tracker.update_commission_rates():
+            rates = self.commission_tracker.get_current_rates()
+            print(f"✅ Комиссии загружены: maker={rates['maker_fee']*100:.4f}%, taker={rates['taker_fee']*100:.4f}%")
+        else:
+            print("⚠️ Использую комиссии по умолчанию")
         
         self.initial_usdt, self.initial_btc = balance
         self.initial_price = price
@@ -339,6 +352,7 @@ class AdvancedGridBotV90:
                         self.send_periodic_report(current_usdt, current_btc, current_price, net_profit)
                         self.last_telegram_report = current_time
                     
+# В методе run_ai_enhanced_monitoring ИСПРАВИТЬ отступы:
                     # Пересоздаем сетку по истечении времени
                     if current_time - last_grid_time > self.grid_refresh_time:
                         current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -373,7 +387,15 @@ class AdvancedGridBotV90:
                                     
                             except Exception as e:
                                 print(f"❌ Ошибка AI оптимизации: {e}")
-                        
+
+                        # 🔄 ПЕРИОДИЧЕСКОЕ ОБНОВЛЕНИЕ КОМИССИЙ (каждые 4 часа)
+                        if self.grid_count % 8 == 0:  # Примерно каждые 4 часа при grid_refresh_time=1800
+                            print("🔄 Обновление комиссий...")
+                            if self.commission_tracker.update_commission_rates():
+                                rates = self.commission_tracker.get_current_rates()
+                                print(f"✅ Комиссии обновлены: maker={rates['maker_fee']*100:.4f}%, taker={rates['taker_fee']*100:.4f}%")
+
+                        # СОЗДАНИЕ НОВОЙ СЕТКИ - ДОЛЖНО БЫТЬ ВНЕ УСЛОВИЯ AI
                         new_orders = self.order_manager.create_grid(
                             self.symbol, self.grid_levels, self.order_size, 
                             self.grid_spacing, current_price
@@ -425,8 +447,9 @@ class AdvancedGridBotV90:
             self.telegram_bot.send_error_alert({'error': error_msg})
             return 0, True
 
+# ЗАМЕНИТЬ метод check_executed_orders на эту версию:
     def check_executed_orders(self, current_usdt, current_btc, current_price):
-        """✅ ПРОВЕРКА ИСПОЛНЕННЫХ ОРДЕРОВ"""
+        """✅ ПРОВЕРКА ИСПОЛНЕННЫХ ОРДЕРОВ С УЧЕТОМ КОМИССИЙ"""
         try:
             if not hasattr(self, 'last_balance_usdt'):
                 self.last_balance_usdt = current_usdt
@@ -439,27 +462,38 @@ class AdvancedGridBotV90:
             order_threshold = self.order_size * 0.8
             if abs(btc_change) > order_threshold:
                 if current_price:
-                    if btc_change > 0:
+                    # 🔄 РАСЧЕТ КОМИССИЙ ДЛЯ КАЖДОГО ОРДЕРА
+                    trade_value = abs(btc_change) * current_price
+                    
+                    if btc_change > 0:  # BUY ордер
+                        commission = self.commission_tracker.calculate_taker_commission(abs(btc_change), current_price)
+                        self.total_commission += commission
+                        
                         order_data = {
                             'side': 'BUY',
                             'qty': btc_change,
                             'price': current_price,
+                            'commission': commission,
                             'timestamp': datetime.now().strftime('%H:%M:%S')
                         }
                         self.executed_orders_count += 1
                         self.telegram_bot.send_order_alert(order_data)
-                        print(f"✅ Обнаружена покупка: {btc_change:.6f} BTC по {current_price:.1f}")
+                        print(f"✅ Обнаружена покупка: {btc_change:.6f} BTC по {current_price:.1f} | Комиссия: {commission:.4f} USDT")
                     
-                    elif btc_change < 0:
+                    elif btc_change < 0:  # SELL ордер
+                        commission = self.commission_tracker.calculate_taker_commission(abs(btc_change), current_price)
+                        self.total_commission += commission
+                        
                         order_data = {
                             'side': 'SELL', 
                             'qty': abs(btc_change),
                             'price': current_price,
+                            'commission': commission,
                             'timestamp': datetime.now().strftime('%H:%M:%S')
                         }
                         self.executed_orders_count += 1
                         self.telegram_bot.send_order_alert(order_data)
-                        print(f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC по {current_price:.1f}")
+                        print(f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC по {current_price:.1f} | Комиссия: {commission:.4f} USDT")
             
             self.last_balance_usdt = current_usdt
             self.last_balance_btc = current_btc
@@ -484,10 +518,12 @@ class AdvancedGridBotV90:
             return f"{hours:02d}:{minutes:02d}"
         return "00:00"
 
+# В grid_bot.py ИСПРАВИТЬ метод send_periodic_report (убрать лишний отступ):
     def send_periodic_report(self, usdt_balance, btc_balance, current_price, profit):
-        """📊 ОТПРАВКА ПЕРИОДИЧЕСКОГО ОТЧЕТА"""
+        """📊 ОТПРАВКА ПЕРИОДИЧЕСКОГО ОТЧЕТА С КОМИССИЯМИ"""
         try:
             total_balance = usdt_balance + (btc_balance * current_price) if current_price else 0
+            rates = self.commission_tracker.get_current_rates()
             
             self.telegram_bot.send_periodic_report({
                 'running_time': self.get_running_time(),
@@ -496,6 +532,8 @@ class AdvancedGridBotV90:
                 'total_balance': total_balance,
                 'profit': profit,
                 'commission': self.total_commission,
+                'maker_fee': rates['maker_fee'] * 100,  # в процентах
+                'taker_fee': rates['taker_fee'] * 100,  # в процентах
                 'executed_orders': self.executed_orders_count,
                 'grid_count': self.grid_count,
                 'api_errors': self.api_errors
