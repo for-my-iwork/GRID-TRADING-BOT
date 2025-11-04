@@ -1,4 +1,4 @@
-# main.py
+# main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
 """
 🚀 ADVANCED GRID TRADING BOT v9.0
 Главный запускающий файл
@@ -20,7 +20,7 @@ def main():
             profit, stopped = bot.run_ai_enhanced_monitoring()
             
             if stopped:
-                if bot.api_errors >= bot.max_api_errors:
+                if hasattr(bot, 'max_api_errors') and bot.api_errors >= bot.max_api_errors:
                     print("\n🛑 Работа остановлена из-за большого количества ошибок API!")
                 elif bot.user_commanded_stop:
                     print("\n🛑 Работа остановлена по команде пользователя!")
@@ -38,11 +38,21 @@ def main():
                 
         except KeyboardInterrupt:
             print(f"\n\n⏹️  Прервано пользователем")
-            bot.send_telegram_message("🛑 Бот остановлен пользователем")
-            bot.cancel_all_orders_safe()
+            try:
+                bot.send_telegram_message("🛑 Бот остановлен пользователем")
+            except:
+                print("⚠️ Не удалось отправить сообщение в Telegram")
+            try:
+                bot.cancel_all_orders_safe()
+            except:
+                pass
         except Exception as e:
             print(f"💥 Критическая ошибка: {e}")
-            bot.send_telegram_message(f"💥 Критическая ошибка: {e}")
+            try:
+                # Используем существующий метод через telegram_bot
+                bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
+            except:
+                print("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
             except:
