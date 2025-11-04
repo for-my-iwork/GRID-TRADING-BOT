@@ -22,8 +22,34 @@ class APIClient:
         self.api_errors = 0
         self.max_retries = 5
 
+    def get_fee_rate(self, symbol: str, category: str = "spot"):
+        """💰 ПОЛУЧЕНИЕ КОМИССИЙ ПО ТОРГОВОЙ ПАРЕ"""
+        try:
+            # Используем правильное название метода - get_fee_rates (во множественном числе)
+            fee_data = self.session.get_fee_rates(
+                category=category,
+                symbol=symbol
+            )
+            return fee_data
+        except Exception as e:
+            print(f"❌ Ошибка получения комиссий через API: {e}")
+            print("🔄 Использую стандартные комиссии 0.1%")
+            # Возвращаем значения по умолчанию при ошибке
+            return {
+                'retCode': 0,
+                'result': {
+                    'list': [{
+                        'symbol': symbol,
+                        'makerFeeRate': '0.001',
+                        'takerFeeRate': '0.001'
+                    }]
+                }
+            }
+
+
     def robust_api_call(self, api_function, *args, **kwargs):
         """🔄 НАДЕЖНЫЙ ВЫЗОВ API С ПОВТОРНЫМИ ПОПЫТКАМИ"""
+        # ... остальной код метода БЕЗ изменений ...
         retry_delay = 5
         
         for attempt in range(self.max_retries):
@@ -130,3 +156,4 @@ class APIClient:
         except Exception as e:
             print(f"❌ Ошибка получения открытых ордеров: {e}")
             return None
+            
