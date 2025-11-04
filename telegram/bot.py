@@ -47,14 +47,24 @@ class TelegramBot:
         return self.send_message(message)
 
     def send_order_alert(self, data):
-        """✅ УВЕДОМЛЕНИЕ ОБ ИСПОЛНЕНИИ ОРДЕРА"""
+        """✅ УВЕДОМЛЕНИЕ ОБ ИСПОЛНЕНИИ ОРДЕРА С КОМИССИЕЙ"""
+        side = data.get('side', 'UNKNOWN')
+        qty = data.get('qty', 0)
+        price = data.get('price', 0)
+        commission = data.get('commission', 0)
+        timestamp = data.get('timestamp', 'N/A')
+        
+        trade_value = qty * price
+        commission_percentage = (commission / trade_value * 100) if trade_value > 0 else 0
+        
         message = f"""
 ✅ <b>ОРДЕР ИСПОЛНЕН</b>
 
-{'🟢 ПОКУПКА' if data.get('side') == 'BUY' else '🔴 ПРОДАЖА'} {data.get('qty', 0):.6f} BTC
-💵 Цена: {data.get('price', 0):,.1f} USDT
-💸 Сумма: {data.get('qty', 0) * data.get('price', 0):,.2f} USDT
-⏰ Время: {data.get('timestamp', 'N/A')}
+{'🟢 ПОКУПКА' if side == 'BUY' else '🔴 ПРОДАЖА'} {qty:.6f} BTC
+💵 Цена: {price:,.1f} USDT
+💸 Сумма: {trade_value:,.2f} USDT
+💳 Комиссия: {commission:.4f} USDT ({commission_percentage:.4f}%)
+⏰ Время: {timestamp}
         """
         return self.send_message(message)
 
@@ -84,8 +94,13 @@ class TelegramBot:
         return self.send_message(message)
 
     def send_periodic_report(self, data):
-        """📊 ПЕРИОДИЧЕСКИЙ ОТЧЕТ"""
-        message = f"""
+        """📊 ПЕРИОДИЧЕСКИЙ ОТЧЕТ С КОМИССИЯМИ"""
+        try:
+            # Получаем данные о комиссиях (если переданы)
+            maker_fee = data.get('maker_fee', 0.1)  # Значение по умолчанию 0.1%
+            taker_fee = data.get('taker_fee', 0.1)  # Значение по умолчанию 0.1%
+            
+            message = f"""
 📊 <b>ПЕРИОДИЧЕСКИЙ ОТЧЕТ v9.0</b>
 
 ⏰ Время работы: {data.get('running_time', '00:00')}
@@ -93,11 +108,24 @@ class TelegramBot:
 💵 Общий в USDT: {data.get('total_balance', 0):.2f}
 📈 Прибыль: {data.get('profit', 0):+.4f} USDT
 💸 Комиссии: {data.get('commission', 0):.4f} USDT
+🎯 Ставки: M:{maker_fee:.4f}% / T:{taker_fee:.4f}%
 📦 Исполнено ордеров: {data.get('executed_orders', 0)}
 🔄 Сеток создано: {data.get('grid_count', 0)}
 ❌ Ошибок API: {data.get('api_errors', 0)}
-        """
-        return self.send_message(message)
+            """
+            return self.send_message(message)
+        except Exception as e:
+            print(f"❌ Ошибка формирования периодического отчета: {e}")
+            # Отправка упрощенного отчета в случае ошибки
+            simplified_message = f"""
+📊 <b>ПЕРИОДИЧЕСКИЙ ОТЧЕТ</b>
+
+⏰ Время работы: {data.get('running_time', '00:00')}
+💰 Баланс: {data.get('total_balance', 0):.2f} USDT
+📈 Прибыль: {data.get('profit', 0):+.4f} USDT
+💸 Комиссии: {data.get('commission', 0):.4f} USDT
+            """
+            return self.send_message(simplified_message)
 
     def send_stop_alert(self, data):
         """🚨 УВЕДОМЛЕНИЕ ОБ ОСТАНОВКЕ"""
@@ -117,6 +145,18 @@ class TelegramBot:
 
 Ошибка: {data.get('error', 'Неизвестная ошибка')}
 Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        """
+        return self.send_message(message)
+
+    def send_commission_update_alert(self, data):
+        """💰 УВЕДОМЛЕНИЕ ОБ ОБНОВЛЕНИИ КОМИССИЙ"""
+        message = f"""
+💰 <b>ОБНОВЛЕНИЕ КОМИССИЙ</b>
+
+🎯 Ставки комиссий обновлены:
+   • Maker: {data.get('maker_fee', 0)*100:.4f}%
+   • Taker: {data.get('taker_fee', 0)*100:.4f}%
+⏰ Время: {datetime.now().strftime('%H:%M:%S')}
         """
         return self.send_message(message)
 
