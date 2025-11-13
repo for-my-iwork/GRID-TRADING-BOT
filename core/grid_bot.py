@@ -129,6 +129,7 @@ class AdvancedGridBot:
 
     def shutdown(self):
         """🔴 ГРАЦИОЗНОЕ ВЫКЛЮЧЕНИЕ БОТА (без очистки состояния)"""
+        print("🛑 SYSTEMD STOP: Инициируется грациозное выключение...")
         self.shutdown_requested = True
         self.trading_paused = True
         self.is_running = False
@@ -136,11 +137,11 @@ class AdvancedGridBot:
         # Отменяем все активные ордера
         self.cancel_all_orders_safe()
         
-        # 🔴 ИСПРАВЛЕНИЕ: Сохраняем состояние, но НЕ очищаем его
+        # 🔴 ВАЖНО: Сохраняем состояние, но НЕ очищаем его
         # Это позволит восстановиться при перезапуске systemd службы
         self._save_state_safe()
         
-        print("🔴 Грациозное выключение бота...")
+        print("🔴 Грациозное выключение бота (состояние сохранено)")
         self.telegram_bot.send_message("🔴 Бот выключается (состояние сохранено для восстановления)...")
         
         # Завершаем процесс
@@ -148,6 +149,7 @@ class AdvancedGridBot:
 
     def full_shutdown(self):
         """🔴 ПОЛНОЕ ВЫКЛЮЧЕНИЕ БОТА С ОЧИСТКОЙ СОСТОЯНИЯ"""
+        print("🛑 MANUAL SHUTDOWN: Инициируется полное выключение с очисткой...")
         self.shutdown_requested = True
         self.trading_paused = True
         self.is_running = False
@@ -155,7 +157,7 @@ class AdvancedGridBot:
         # Отменяем все активные ордера
         self.cancel_all_orders_safe()
         
-        # Очищаем состояние
+        # Очищаем состояние только при явной команде
         clear_state()
         
         print("🔴 Полное выключение бота с очисткой состояния")
@@ -335,7 +337,7 @@ class AdvancedGridBot:
             self.is_running = False
 
     def _save_state_safe(self):
-        """💾 БЕЗОПАСНОЕ СОХРАНИЕ СОСТОЯНИЯ"""
+        """💾 БЕЗОПАСНОЕ СОХРАНЕНИЕ СОСТОЯНИЯ"""
         try:
             state_data = self._capture_state()
             if not save_state(state_data):
@@ -730,10 +732,13 @@ class AdvancedGridBot:
             
             self.reporter.send_final_report(final_stats)
             
-            # 🔴 ИСПРАВЛЕНИЕ: Очищаем состояние только при штатном завершении сессии
-            # НЕ очищаем при остановке systemd службы!
+            # 🔴 ВАЖНОЕ ИСПРАВЛЕНИЕ: Очищаем состояние ТОЛЬКО при завершении сессии по времени
+            # НИКОГДА не очищаем при остановке systemd службы!
             if not self.trading_paused and not self.shutdown_requested:
+                print("⏰ Сессия завершена по времени - очищаем состояние")
                 clear_state()
+            else:
+                print("🔄 Остановка без очистки состояния (для восстановления)")
             
             print(f"📊 Всего ошибок API: {self.api_errors}")
             print(f"📊 Сеток создано: {self.grid_count}")
