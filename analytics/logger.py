@@ -133,7 +133,6 @@ class StateManager:
                                            suffix='.tmp', encoding='utf-8') as tmp_file:
                 json.dump(state_data, tmp_file, indent=2, ensure_ascii=False)
                 tmp_file.flush()
-                # ИСПРАВЛЕНИЕ: добавляем скобки для вызова метода
                 os.fsync(tmp_file.fileno())
             
             # Создаем backup текущего состояния
@@ -212,25 +211,66 @@ class StateManager:
             bot_data = state_data.get('bot_data', {})
             if not isinstance(bot_data, dict):
                 return False
+            
+            # Проверяем обязательные поля в bot_data
+            required_bot_fields = [
+                'session_start_time', 'session_end_time', 'monitoring_duration',
+                'active_order_ids', 'executed_orders_count', 'grid_count'
+            ]
+            
+            for field in required_bot_fields:
+                if field not in bot_data:
+                    print(f"⚠️ Missing required bot_data field: {field}")
+                    return False
+                
+            # Проверяем корректность времени
+            current_time = time.time()
+            session_end_time = bot_data.get('session_end_time')
+            if session_end_time and session_end_time < current_time:
+                print("⚠️ Session end time has passed, state is expired")
+                return False
                 
             return True
             
-        except Exception:
+        except Exception as e:
+            print(f"❌ State validation error: {e}")
             return False
 
     def clear_state(self) -> bool:
         """
-        Очистка состояния при завершении работы
+        Очистка состояния только при явном завершении работы
         """
         try:
+            # Состояние очищается только в следующих случаях:
+            # 1. Явная команда /shutdown
+            # 2. Завершение сессии по времени
+            # 3. Аварийная остановка
+            # НЕ очищается при простой остановке systemd службы!
+            
             if os.path.exists(self.state_file):
                 os.remove(self.state_file)
+                print("✅ State cleared successfully")
             if os.path.exists(self.backup_file):
                 os.remove(self.backup_file)
-            print("✅ State cleared successfully")
+                print("✅ Backup state cleared successfully")
             return True
         except Exception as e:
             print(f"❌ Failed to clear state: {e}")
+            return False
+
+    def save_state_only(self) -> bool:
+        """
+        Сохранение состояния без очистки (для systemd остановки)
+        """
+        try:
+            # Этот метод должен вызываться при graceful shutdown через systemd
+            # чтобы сохранить состояние для последующего восстановления
+            current_state = self.load_state()
+            if current_state:
+                return self.save_state(current_state)
+            return False
+        except Exception as e:
+            print(f"❌ Failed to save state for restart: {e}")
             return False
 
 
@@ -245,3 +285,7 @@ def load_state() -> Optional[Dict[str, Any]]:
 
 def clear_state() -> bool:
     return _state_manager.clear_state()
+
+def save_state_only() -> bool:
+    """Новая функция для сохранения состояния без очистки"""
+    return _state_manager.save_state_only()
