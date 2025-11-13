@@ -28,6 +28,12 @@ class TelegramCommands:
         
         if command == '/stop':
             self.handle_stop_command(bot_instance)
+        elif command == '/shutdown':
+            self.handle_shutdown_command(bot_instance)
+        elif command == '/pause':
+            self.handle_pause_command(bot_instance)
+        elif command == '/resume':
+            self.handle_resume_command(bot_instance)
         elif command == '/emergency_stop':
             self.handle_emergency_stop_command(bot_instance)
         elif command == '/status':
@@ -46,9 +52,55 @@ class TelegramCommands:
             self.handle_unknown_command(command)
 
     def handle_stop_command(self, bot_instance):
-        """🛑 ОБРАБОТКА КОМАНДЫ МЯГКОЙ ОСТАНОВКИ"""
-        bot_instance.user_commanded_stop = True
-        self.telegram_bot.send_message("🛑 Получена команда мягкой остановки...")
+        """🛑 ОБРАБОТКА КОМАНДЫ МЯГКОЙ ОСТАНОВКИ (пауза)"""
+        try:
+            if hasattr(bot_instance, 'pause_trading'):
+                bot_instance.pause_trading()
+                self.telegram_bot.send_message(
+                    "⏸️ <b>Торговля приостановлена</b>\n\n"
+                    "Бот продолжает работать, но не размещает ордера.\n"
+                    "Используйте /resume для возобновления торговли.\n"
+                    "Используйте /shutdown для полного выключения."
+                )
+            else:
+                self.telegram_bot.send_message("❌ Функция паузы недоступна в этой версии бота")
+        except Exception as e:
+            self.telegram_bot.send_message(f"❌ Ошибка при остановке: {e}")
+
+    def handle_shutdown_command(self, bot_instance):
+        """🔴 ОБРАБОТКА КОМАНДЫ ПОЛНОГО ВЫКЛЮЧЕНИЯ"""
+        try:
+            if hasattr(bot_instance, 'shutdown'):
+                self.telegram_bot.send_message(
+                    "🔴 <b>Полное выключение бота</b>\n\n"
+                    "Выполняется безопасное завершение работы...\n"
+                    "Бот будет остановлен и не перезапустится автоматически."
+                )
+                # Даем время на отправку сообщения
+                time.sleep(2)
+                bot_instance.shutdown()
+            else:
+                self.telegram_bot.send_message("❌ Функция выключения недоступна в этой версии бота")
+        except Exception as e:
+            self.telegram_bot.send_message(f"❌ Ошибка при выключении: {e}")
+
+    def handle_pause_command(self, bot_instance):
+        """⏸️ ОБРАБОТКА КОМАНДЫ ПАУЗЫ (аналогично stop)"""
+        self.handle_stop_command(bot_instance)
+
+    def handle_resume_command(self, bot_instance):
+        """▶️ ОБРАБОТКА КОМАНДЫ ВОЗОБНОВЛЕНИЯ"""
+        try:
+            if hasattr(bot_instance, 'resume_trading'):
+                bot_instance.resume_trading()
+                self.telegram_bot.send_message(
+                    "▶️ <b>Торговля возобновлена</b>\n\n"
+                    "Бот снова размещает ордера и работает в нормальном режиме."
+                )
+            else:
+                self.telegram_bot.send_message("❌ Функция возобновления недоступна в этой версии бота")
+        except Exception as e:
+            self.telegram_bot.send_message(f"❌ Ошибка при возобновлении: {e}")
 
     def handle_emergency_stop_command(self, bot_instance):
         """🚨 ОБРАБОТКА КОМАНДЫ АВАРИЙНОЙ ОСТАНОВКИ"""
@@ -62,10 +114,18 @@ class TelegramCommands:
             usdt, btc = self.api_client.get_balance()
             total = usdt + (btc * current_price) if current_price else 0
             
+            # Проверяем режим работы бота
+            trading_status = "🟢 Активен"
+            if hasattr(bot_instance, 'trading_paused') and bot_instance.trading_paused:
+                trading_status = "⏸️ На паузе"
+            if hasattr(bot_instance, 'is_running') and not bot_instance.is_running:
+                trading_status = "🔴 Остановлен"
+            
             status = f"""
 📊 <b>ТЕКУЩИЙ СТАТУС v9.2</b>
 
 ⏰ Время работы: {bot_instance.get_running_time()}
+📈 Состояние: {trading_status}
 💰 Баланс: {usdt:.2f} USDT + {btc:.6f} BTC
 💵 Общий: {total:.2f} USDT
 🎯 Цена: {current_price:.1f}
@@ -116,8 +176,13 @@ class TelegramCommands:
     def handle_params_command(self, bot_instance):
         """⚙️ ОБРАБОТКА КОМАНДЫ ПАРАМЕТРОВ"""
         try:
+            # Проверяем режим работы бота
+            trading_status = "🟢 Активен"
+            if hasattr(bot_instance, 'trading_paused') and bot_instance.trading_paused:
+                trading_status = "⏸️ На паузе"
+            
             params = f"""
-⚙️ <b>ТЕКУЩИЕ ПАРАМЕТРЫ v9.0</b>
+⚙️ <b>ТЕКУЩИЕ ПАРАМЕТРЫ v9.2</b>
 
 🎯 Символ: {bot_instance.symbol}
 📊 Уровней: {bot_instance.grid_levels}
@@ -131,6 +196,7 @@ class TelegramCommands:
 • Макс. просадка: {bot_instance.risk_manager.max_drawdown_pct*100}%
 
 🤖 Режим: {'AI-оптимизация' if bot_instance.ai_mode else 'Ручной'}
+📈 Состояние: {trading_status}
 📊 Режим рынка: {getattr(bot_instance, 'market_regime', 'Не определен')}
             """
             self.telegram_bot.send_message(params)
@@ -141,25 +207,46 @@ class TelegramCommands:
     def handle_help_command(self):
         """ℹ️ ОБРАБОТКА КОМАНДЫ ПОМОЩИ"""
         help_text = """
-🤖 <b>GRID BOT v9.0 - ДОСТУПНЫЕ КОМАНДЫ:</b>
+🤖 <b>GRID BOT v9.2 - ДОСТУПНЫЕ КОМАНДЫ:</b>
 
-/stop - Мягкая остановка
-/emergency_stop - Аварийная остановка
+/start - Запустить бота
+/stop или /pause - Приостановить торговлю (бот продолжает работать)
+/resume - Возобновить торговлю после паузы
+/shutdown - Полное выключение бота
+/emergency_stop - Аварийная остановка (отмена всех ордеров)
 /status - Текущий статус
 /balance - Баланс и PnL
 /params - Параметры сетки
 /help - Справка
+
+💡 <b>Важно:</b>
+• /stop - бот остается работать, но не торгует
+• /shutdown - бот полностью выключается
+• systemd автоматически перезапускает только при падении процесса
         """
         self.telegram_bot.send_message(help_text)
 
     def handle_start_command(self, bot_instance):
         """🚀 ОБРАБОТКА КОМАНДЫ START"""
-        start_text = """
-🚀 <b>GRID TRADING BOT v9.0</b>
+        try:
+            if hasattr(bot_instance, 'resume_trading'):
+                bot_instance.resume_trading()
+                start_text = """
+🚀 <b>GRID TRADING BOT v9.2</b>
 
 🤖 Успешно запущен и работает!
-        """
-        self.telegram_bot.send_message(start_text)
+Используйте /help для просмотра всех команд.
+                """
+            else:
+                start_text = """
+🚀 <b>GRID TRADING BOT v9.2</b>
+
+🤖 Бот уже работает!
+Используйте /help для просмотра всех команд.
+                """
+            self.telegram_bot.send_message(start_text)
+        except Exception as e:
+            self.telegram_bot.send_message(f"❌ Ошибка при запуске: {e}")
 
     def handle_restart_command(self, bot_instance):
         """🔄 ОБРАБОТКА КОМАНДЫ ПЕРЕЗАПУСКА"""
@@ -167,7 +254,7 @@ class TelegramCommands:
 
     def handle_unknown_command(self, command):
         """❓ ОБРАБОТКА НЕИЗВЕСТНОЙ КОМАНДЫ"""
-        self.telegram_bot.send_message(f"❓ Неизвестная команда: {command}")
+        self.telegram_bot.send_message(f"❓ Неизвестная команда: {command}\nИспользуйте /help для списка команд.")
 
     def cleanup(self):
         """🧹 ОЧИСТКА РЕСУРСОВ"""
