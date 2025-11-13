@@ -199,7 +199,8 @@ class AdvancedGridBot:
                 'ai_mode': self.ai_mode,
                 'api_errors': self.api_errors,
                 'trading_paused': self.trading_paused,  # Сохраняем состояние паузы
-                'is_running': self.is_running
+                'is_running': self.is_running,
+                'shutdown_requested': self.shutdown_requested  # NEW: сохраняем флаг выключения
             }
         }
 
@@ -237,9 +238,10 @@ class AdvancedGridBot:
             self.api_errors = bot_data.get('api_errors', 0)
             self.ai_mode = bot_data.get('ai_mode', False)
             
-            # Восстанавливаем состояние паузы
+            # Восстанавливаем состояние паузы и выключения
             self.trading_paused = bot_data.get('trading_paused', False)
             self.is_running = bot_data.get('is_running', False)
+            self.shutdown_requested = bot_data.get('shutdown_requested', False)  # NEW: восстанавливаем флаг выключения
             
             # Восстанавливаем параметры сетки
             self.grid_levels = bot_data.get('grid_levels', self.grid_levels)
@@ -258,7 +260,7 @@ class AdvancedGridBot:
             
             print(f"✅ State restored: {len(self.active_order_ids)} active orders, "
                   f"Executed: {self.executed_orders_count}, Grids: {self.grid_count}, "
-                  f"Paused: {self.trading_paused}")
+                  f"Paused: {self.trading_paused}, Shutdown: {self.shutdown_requested}")
                   
         except Exception as e:
             print(f"❌ Error restoring state: {e}. Starting with clean state.")
@@ -269,6 +271,7 @@ class AdvancedGridBot:
             self.realized_pnl = 0.0
             self.trading_paused = False
             self.is_running = False
+            self.shutdown_requested = False
 
     def _save_state_safe(self):
         """💾 БЕЗОПАСНОЕ СОХРАНИЕ СОСТОЯНИЯ"""
