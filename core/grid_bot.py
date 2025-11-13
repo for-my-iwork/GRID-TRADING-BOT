@@ -128,7 +128,26 @@ class AdvancedGridBot:
         self.telegram_bot.send_message("▶️ Торговля возобновлена. Бот снова размещает ордера.")
 
     def shutdown(self):
-        """🔴 ПОЛНОЕ ВЫКЛЮЧЕНИЕ БОТА"""
+        """🔴 ГРАЦИОЗНОЕ ВЫКЛЮЧЕНИЕ БОТА (без очистки состояния)"""
+        self.shutdown_requested = True
+        self.trading_paused = True
+        self.is_running = False
+        
+        # Отменяем все активные ордера
+        self.cancel_all_orders_safe()
+        
+        # 🔴 ИСПРАВЛЕНИЕ: Сохраняем состояние, но НЕ очищаем его
+        # Это позволит восстановиться при перезапуске systemd службы
+        self._save_state_safe()
+        
+        print("🔴 Грациозное выключение бота...")
+        self.telegram_bot.send_message("🔴 Бот выключается (состояние сохранено для восстановления)...")
+        
+        # Завершаем процесс
+        sys.exit(0)
+
+    def full_shutdown(self):
+        """🔴 ПОЛНОЕ ВЫКЛЮЧЕНИЕ БОТА С ОЧИСТКОЙ СОСТОЯНИЯ"""
         self.shutdown_requested = True
         self.trading_paused = True
         self.is_running = False
@@ -139,8 +158,8 @@ class AdvancedGridBot:
         # Очищаем состояние
         clear_state()
         
-        print("🔴 Полное выключение бота по команде пользователя")
-        self.telegram_bot.send_message("🔴 Бот полностью выключен по команде пользователя.")
+        print("🔴 Полное выключение бота с очисткой состояния")
+        self.telegram_bot.send_message("🔴 Бот полностью выключен. Состояние очищено.")
         
         # Завершаем процесс
         sys.exit(0)
@@ -711,7 +730,8 @@ class AdvancedGridBot:
             
             self.reporter.send_final_report(final_stats)
             
-            # Очищаем состояние при штатном завершении (только если не на паузе)
+            # 🔴 ИСПРАВЛЕНИЕ: Очищаем состояние только при штатном завершении сессии
+            # НЕ очищаем при остановке systemd службы!
             if not self.trading_paused and not self.shutdown_requested:
                 clear_state()
             
