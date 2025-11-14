@@ -7,6 +7,7 @@
 
 import time
 import os
+import sys
 from datetime import datetime, timedelta
 
 from config import *
@@ -84,12 +85,14 @@ class AdvancedGridBot:
         self.avg_btc_entry_price = 0.0
         self.realized_pnl = 0.0
         
+        # ==================== НОВЫЕ ФЛАГИ УПРАВЛЕНИЯ ====================
+        self.trading_paused = False
+        self.is_running = False
+        self.shutdown_requested = False
+        
         self._restore_initial_state()
         
         print("✅ Бот v9.2 инициализирован с модульной архитектурой")
-
-
-# В класс AdvancedGridBot добавьте этот метод:
 
     def set_auto_parameters(self, mode, duration, grid_levels=None, grid_spacing=None, grid_refresh=None):
         """⚙️ УСТАНОВКА ПАРАМЕТРОВ ДЛЯ АВТОМАТИЧЕСКОГО РЕЖИМА"""
@@ -102,29 +105,140 @@ class AdvancedGridBot:
             self.grid_refresh_time = grid_refresh
             print(f"🧠 Установлены AI параметры: уровни {grid_levels}, расстояние {grid_spacing*100:.3f}%")
 
+    def pause_trading(self):
+        """⏸️ ПРИОСТАНОВКА ТОРГОВЛИ БЕЗ ВЫКЛЮЧЕНИЯ БОТА"""
+        self.trading_paused = True
+        self.is_running = False
+        
+        # Отменяем все активные ордера
+        self.cancel_all_orders_safe()
+        
+        # Сохраняем состояние
+        self._save_state_safe()
+        
+        print("⏸️ Торговля приостановлена по команде пользователя")
+        self.telegram_bot.send_message("⏸️ Торговля приостановлена. Бот продолжает работать.")
+
+    def resume_trading(self):
+        """▶️ ВОЗОБНОВЛЕНИЕ ТОРГОВЛИ ПОСЛЕ ПАУЗЫ"""
+        self.trading_paused = False
+        self.is_running = True
+        
+        print("▶️ Торговля возобновлена по команде пользователя")
+        self.telegram_bot.send_message("▶️ Торговля возобновлена. Бот снова размещает ордера.")
+
+    def shutdown(self):
+        """🔴 ГРАЦИОЗНОЕ ВЫКЛЮЧЕНИЕ БОТА (без очистки состояния)"""
+        print("🛑 SYSTEMD STOP: Инициируется грациозное выключение...")
+        self.shutdown_requested = True
+        self.trading_paused = True
+        self.is_running = False
+        
+        # Отменяем все активные ордера
+        self.cancel_all_orders_safe()
+        
+        # 🔴 ВАЖНО: Сохраняем состояние, но НЕ очищаем его
+        # Это позволит восстановиться при перезапуске systemd службы
+        self._save_state_safe()
+        
+        print("🔴 Грациозное выключение бота (состояние сохранено)")
+        self.telegram_bot.send_message("🔴 Бот выключается (состояние сохранено для восстановления)...")
+        
+        # Завершаем процесс
+        sys.exit(0)
+
+    def full_shutdown(self):
+        """🔴 ПОЛНОЕ ВЫКЛЮЧЕНИЕ БОТА С ОЧИСТКОЙ СОСТОЯНИЯ"""
+        print("🛑 MANUAL SHUTDOWN: Инициируется полное выключение с очисткой...")
+        self.shutdown_requested = True
+        self.trading_paused = True
+        self.is_running = False
+        
+        # Отменяем все активные ордера
+        self.cancel_all_orders_safe()
+        
+        # Очищаем состояние только при явной команде
+        clear_state()
+        
+        print("🔴 Полное выключение бота с очисткой состояния")
+        self.telegram_bot.send_message("🔴 Бот полностью выключен. Состояние очищено.")
+        
+        # Завершаем процесс
+        sys.exit(0)
+
     def _restore_initial_state(self):
         """🔄 ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ПРИ ИНИЦИАЛИЗАЦИИ"""
         state_data = load_state()
-        if state_data:
+        if state_data and self._validate_state(state_data):
             self._restore_state(state_data)
             recovery_msg = (
                 "🔄 *Бот восстановлен из сохраненного состояния*\n"
                 f"• Время сохранения: {state_data.get('timestamp', 'N/A')}\n"
                 f"• Выполнено ордеров: {self.executed_orders_count}\n"
                 f"• Реализованный PnL: {self.realized_pnl:.4f} USDT\n"
-                f"• Активных ордеров: {len(self.active_order_ids)}"
+                f"• Активных ордеров: {len(self.active_order_ids)}\n"
+                f"• Состояние: {'⏸️ Пауза' if self.trading_paused else '▶️ Активен'}"
             )
             self.telegram_bot.send_message(recovery_msg)
             print("✅ Bot state restored from saved state")
         else:
             print("ℹ️ Starting with fresh state - no previous state found")
 
+    def _validate_state(self, state_data: dict) -> bool:
+        """✅ ВАЛИДАЦИЯ СОХРАНЕННОГО СОСТОЯНИЯ"""
+        try:
+            if not isinstance(state_data, dict):
+                return False
+                
+            if state_data.get('version') != '1.1':
+                print("⚠️ State version mismatch, starting fresh")
+                return False
+                
+            bot_data = state_data.get('bot_data', {})
+            if not bot_data:
+                return False
+                
+            # Проверяем обязательные поля
+            required_fields = [
+                'session_start_time', 'session_end_time', 'monitoring_duration',
+                'active_order_ids', 'executed_orders_count', 'grid_count'
+            ]
+            
+            for field in required_fields:
+                if field not in bot_data:
+                    print(f"⚠️ Missing required field in state: {field}")
+                    return False
+                    
+            # Проверяем корректность времени
+            current_time = time.time()
+            session_end_time = bot_data.get('session_end_time')
+            if session_end_time and session_end_time < current_time:
+                print("⚠️ Session end time has passed, starting fresh")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            print(f"❌ State validation error: {e}")
+            return False
+
     def _capture_state(self) -> dict:
         """💾 СОБОР КЛЮЧЕВЫХ ПЕРЕМЕННЫХ ДЛЯ СОХРАНЕНИЯ"""
+        # Вычисляем оставшееся время
+        current_time = time.time()
+        if self.start_time and hasattr(self, 'session_end_time'):
+            time_left = self.session_end_time - current_time
+        else:
+            time_left = self.monitoring_duration * 60
+        
         return {
-            'version': '1.0',
+            'version': '1.1',
             'timestamp': datetime.now().isoformat(),
             'bot_data': {
+                'session_start_time': self.start_time.timestamp() if self.start_time else None,
+                'session_end_time': getattr(self, 'session_end_time', None),
+                'monitoring_duration': self.monitoring_duration,
+                'time_remaining': time_left,
                 'active_order_ids': list(self.active_order_ids),
                 'avg_btc_entry_price': self.avg_btc_entry_price,
                 'realized_pnl': self.realized_pnl,
@@ -143,7 +257,12 @@ class AdvancedGridBot:
                 'order_size': self.order_size,
                 'grid_spacing': self.grid_spacing,
                 'ai_mode': self.ai_mode,
-                'api_errors': self.api_errors
+                'api_errors': self.api_errors,
+                'trading_paused': self.trading_paused,
+                'is_running': self.is_running,
+                'shutdown_requested': self.shutdown_requested,
+                'user_commanded_stop': self.user_commanded_stop,
+                'user_commanded_emergency_stop': self.user_commanded_emergency_stop
             }
         }
 
@@ -152,6 +271,23 @@ class AdvancedGridBot:
         try:
             bot_data = state_data.get('bot_data', {})
             
+            # Восстанавливаем время сессии
+            start_time_ts = bot_data.get('session_start_time')
+            if start_time_ts:
+                self.start_time = datetime.fromtimestamp(start_time_ts)
+        
+            # Восстанавливаем время окончания сессии
+            self.session_end_time = bot_data.get('session_end_time')
+        
+            # Восстанавливаем оставшееся время или используем длительность из конфига
+            time_remaining = bot_data.get('time_remaining')
+            if time_remaining and time_remaining > 0:
+                # Используем оставшееся время
+                self.monitoring_duration = time_remaining / 60
+            else:
+                # Используем длительность из конфига
+                self.monitoring_duration = bot_data.get('monitoring_duration', self.monitoring_duration)
+        
             # Восстанавливаем основные переменные
             self.active_order_ids = set(bot_data.get('active_order_ids', []))
             self.avg_btc_entry_price = bot_data.get('avg_btc_entry_price', 0.0)
@@ -163,6 +299,13 @@ class AdvancedGridBot:
             self.market_regime = bot_data.get('market_regime', 'unknown')
             self.api_errors = bot_data.get('api_errors', 0)
             self.ai_mode = bot_data.get('ai_mode', False)
+            
+            # Восстанавливаем состояние управления
+            self.trading_paused = bot_data.get('trading_paused', False)
+            self.is_running = bot_data.get('is_running', False)
+            self.shutdown_requested = bot_data.get('shutdown_requested', False)
+            self.user_commanded_stop = bot_data.get('user_commanded_stop', False)
+            self.user_commanded_emergency_stop = bot_data.get('user_commanded_emergency_stop', False)
             
             # Восстанавливаем параметры сетки
             self.grid_levels = bot_data.get('grid_levels', self.grid_levels)
@@ -180,7 +323,8 @@ class AdvancedGridBot:
                 self.start_time = datetime.fromisoformat(start_time_str)
             
             print(f"✅ State restored: {len(self.active_order_ids)} active orders, "
-                  f"Executed: {self.executed_orders_count}, Grids: {self.grid_count}")
+                  f"Executed: {self.executed_orders_count}, Grids: {self.grid_count}, "
+                  f"Paused: {self.trading_paused}")
                   
         except Exception as e:
             print(f"❌ Error restoring state: {e}. Starting with clean state.")
@@ -189,6 +333,8 @@ class AdvancedGridBot:
             self.executed_orders_count = 0
             self.avg_btc_entry_price = 0.0
             self.realized_pnl = 0.0
+            self.trading_paused = False
+            self.is_running = False
 
     def _save_state_safe(self):
         """💾 БЕЗОПАСНОЕ СОХРАНЕНИЕ СОСТОЯНИЯ"""
@@ -196,6 +342,8 @@ class AdvancedGridBot:
             state_data = self._capture_state()
             if not save_state(state_data):
                 print("⚠️ Failed to save state, but continuing operation")
+            else:
+                print("💾 State saved successfully")
         except Exception as e:
             print(f"❌ Unexpected error during state save: {e}")
 
@@ -376,31 +524,48 @@ class AdvancedGridBot:
             print(f"💰 Начальный баланс: {self.initial_usdt:.2f} USDT + {self.initial_btc:.6f} BTC")
             print(f"🎯 Начальная цена: {self.initial_price:.1f} USDT")
             print(f"⏰ Время начала: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"⏰ Ожидаемое время завершения: {(datetime.now() + timedelta(minutes=self.monitoring_duration)).strftime('%Y-%m-%d %H:%M:%S')}")
             
             start_time = time.time()
-            end_time = start_time + (self.monitoring_duration * 60)
+            
+            # 🔴 ИСПРАВЛЕНИЕ: Восстановление времени сессии ДО цикла (только один раз)
+            if hasattr(self, 'session_end_time') and self.session_end_time:
+                # Используем восстановленное время окончания
+                end_time = self.session_end_time
+                # Пересчитываем оставшееся время в минутах для мониторинга
+                remaining_minutes = (end_time - start_time) / 60
+                print(f"🕒 Восстановлено время сессии. Осталось: {remaining_minutes:.1f} минут")
+            else:
+                # Новый сеанс
+                end_time = start_time + (self.monitoring_duration * 60)
+                self.session_end_time = end_time
+                print(f"⏰ Ожидаемое время завершения: {(datetime.now() + timedelta(minutes=self.monitoring_duration)).strftime('%Y-%m-%d %H:%M:%S')}")
+
             self.start_time = datetime.fromtimestamp(start_time)
+            self.is_running = True
             
             self.price_history = [self.initial_price] * 50
             
             self.executed_orders_count = 0
             self.last_telegram_report = start_time
             
-            # Создаем первую сетку
-            orders_placed = self.order_manager.create_grid(
-                self.symbol, self.grid_levels, self.order_size, 
-                self.grid_spacing, self.initial_price
-            )
-            last_grid_time = time.time()
-            self.grid_count = 1
+            # Создаем первую сетку только если не на паузе
+            if not self.trading_paused:
+                orders_placed = self.order_manager.create_grid(
+                    self.symbol, self.grid_levels, self.order_size, 
+                    self.grid_spacing, self.initial_price
+                )
+                last_grid_time = time.time()
+                self.grid_count = 1
+            else:
+                print("⏸️ Бот запущен в режиме паузы. Сетка не создана.")
+                last_grid_time = 0
             
             # Сохраняем состояние после создания первой сетки
             self._save_state_safe()
             
             stop_triggered = False
             
-            while time.time() < end_time and not stop_triggered:
+            while time.time() < end_time and not stop_triggered and not self.shutdown_requested:
                 try:
                     # Проверяем команды Telegram
                     self.telegram_bot.check_commands(self)
@@ -415,6 +580,12 @@ class AdvancedGridBot:
                         self.order_manager.cancel_all_orders(self.symbol)
                         stop_triggered = True
                         break
+                    
+                    # Проверяем, не на паузе ли бот
+                    if self.trading_paused:
+                        print("\r⏸️ Бот на паузе... Ожидание команды /resume", end="")
+                        time.sleep(10)
+                        continue
                     
                     active_orders = self.order_manager.get_active_orders_count(self.symbol)
                     current_usdt, current_btc = self.api_client.get_balance()
@@ -472,12 +643,13 @@ class AdvancedGridBot:
                     
                     # Периодический отчет в Telegram
                     current_time = time.time()
+                        
                     if current_time - self.last_telegram_report > self.telegram_report_interval:
                         self.send_periodic_report(current_usdt, current_btc, current_price, net_profit)
                         self.last_telegram_report = current_time
                     
-                    # Пересоздаем сетку по истечении времени
-                    if current_time - last_grid_time > self.grid_refresh_time:
+                    # Пересоздаем сетку по истечении времени (только если не на паузе)
+                    if not self.trading_paused and current_time - last_grid_time > self.grid_refresh_time:
                         current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         print(f"\n🔄 [{current_timestamp}] Пересоздаём сетку (#{self.grid_count + 1})...")
                         self.order_manager.cancel_all_orders(self.symbol)
@@ -538,7 +710,8 @@ class AdvancedGridBot:
                     time.sleep(30)
             
             print(f"\n\n📈 ФИНАЛЬНЫЙ ОТЧЕТ:")
-            self.order_manager.cancel_all_orders(self.symbol)
+            if not self.trading_paused:
+                self.order_manager.cancel_all_orders(self.symbol)
             
             final_balance = self.get_total_balance_usdt()
             total_profit = final_balance - initial_total_balance
@@ -559,8 +732,13 @@ class AdvancedGridBot:
             
             self.reporter.send_final_report(final_stats)
             
-            # Очищаем состояние при штатном завершении
-            clear_state()
+            # 🔴 ВАЖНОЕ ИСПРАВЛЕНИЕ: Очищаем состояние ТОЛЬКО при завершении сессии по времени
+            # НИКОГДА не очищаем при остановке systemd службы!
+            if not self.trading_paused and not self.shutdown_requested:
+                print("⏰ Сессия завершена по времени - очищаем состояние")
+                clear_state()
+            else:
+                print("🔄 Остановка без очистки состояния (для восстановления)")
             
             print(f"📊 Всего ошибок API: {self.api_errors}")
             print(f"📊 Сеток создано: {self.grid_count}")
