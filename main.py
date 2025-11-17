@@ -45,7 +45,7 @@ def save_auto_config(mode, duration, grid_levels=None, grid_spacing=None, grid_r
         print(f"❌ Ошибка сохранения конфига: {e}")
         return False
 
-def signal_handler(signum, frame):
+def signal_handler(signum, _frame):
     """🔄 ОБРАБОТЧИК СИГНАЛОВ ДЛЯ GRACEFUL SHUTDOWN"""
     print(f"\n🛑 Received signal {signum}, shutting down gracefully...")
     try:
