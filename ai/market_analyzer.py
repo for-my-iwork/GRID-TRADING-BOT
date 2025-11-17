@@ -8,7 +8,6 @@ from config import DEMO_MODE
 
 class MarketAnalyzer:
     """🧠 АНАЛИЗ РЫНКА ДЛЯ AI ОПТИМИЗАЦИИ"""
-    
     def __init__(self, api_client):
         self.api_client = api_client
         self.is_analyzing = False
@@ -17,13 +16,11 @@ class MarketAnalyzer:
         """📈 МУЛЬТИТАЙМФРЕЙМНЫЙ АНАЛИЗ РЫНКА"""
         if self.is_analyzing:
             return self.get_fallback_analysis()
-        
         self.is_analyzing = True
         try:
             if DEMO_MODE:
                 current_trend = self.analyze_trend_demo(price_history)
                 current_volatility = self.calculate_volatility_demo(price_history)
-                
                 analysis = {
                     'trend_1': current_trend,
                     'trend_5': current_trend, 
@@ -69,13 +66,10 @@ class MarketAnalyzer:
         try:
             if len(price_history) < 20:
                 return "unknown"
-            
             recent_prices = price_history[-20:]
             first_half = sum(recent_prices[:10]) / 10
             second_half = sum(recent_prices[10:]) / 10
-            
             change_pct = ((second_half - first_half) / first_half) * 100
-            
             if change_pct > 0.1:
                 return "bullish"
             elif change_pct < -0.1:
@@ -91,11 +85,9 @@ class MarketAnalyzer:
         try:
             if len(price_history) < 20:
                 return 0.001
-            
             prices = price_history[-50:]
             if len(prices) < 10:
                 return 0.001
-                
             returns = np.diff(np.log(prices))
             volatility = np.std(returns) * np.sqrt(365 * 24 * 60)
             return max(0.001, min(0.05, volatility))
@@ -108,11 +100,9 @@ class MarketAnalyzer:
         try:
             if len(price_history) == 0:
                 return {'support': 0, 'resistance': 0, 'current_vs_support': 0, 'current_vs_resistance': 0}
-            
             current_price = price_history[-1]
             support = current_price * 0.99
             resistance = current_price * 1.01
-            
             return {
                 'support': support,
                 'resistance': resistance,
@@ -128,7 +118,6 @@ class MarketAnalyzer:
         try:
             # Определяем есть ли тренд (bullish/bearish) или нет (neutral/unknown)
             has_trend = trend in ["bullish", "bearish"]
-        
             if volatility > 0.02:
                 if has_trend:
                     return "trending_high_volatility"
@@ -158,21 +147,17 @@ class MarketAnalyzer:
                 interval=timeframe,
                 limit=50
             )
-            
             if klines and 'result' in klines and 'list' in klines['result']:
                 prices = [float(candle[4]) for candle in klines['result']['list']]
-                
                 if len(prices) >= 20:
                     sma_short = sum(prices[-10:]) / 10
                     sma_long = sum(prices[-20:]) / 20
-                    
                     if sma_short > sma_long * 1.002:
                         return "bullish"
                     elif sma_short < sma_long * 0.998:
                         return "bearish"
                     else:
                         return "neutral"
-        
             return "unknown"
         except Exception as e:
             print(f"❌ Ошибка анализа тренда {timeframe}: {e}")
@@ -188,15 +173,12 @@ class MarketAnalyzer:
                 interval=timeframe,
                 limit=50
             )
-            
             if klines and 'result' in klines and 'list' in klines['result']:
                 prices = [float(candle[4]) for candle in klines['result']['list']]
-                
                 if len(prices) >= 20:
                     returns = np.diff(np.log(prices))
                     volatility = np.std(returns) * np.sqrt(365 * 24 * 60)
                     return max(0.001, min(0.05, volatility))
-            
             return 0.001
         except Exception as e:
             print(f"❌ Ошибка расчета волатильности {timeframe}: {e}")
@@ -212,22 +194,18 @@ class MarketAnalyzer:
                 interval='60',
                 limit=100
             )
-            
             if klines and 'result' in klines and 'list' in klines['result']:
                 prices = [float(candle[4]) for candle in klines['result']['list']]
-                
                 if len(prices) >= 20:
                     recent_low = min(prices[-10:])
                     recent_high = max(prices[-10:])
                     current_price = prices[-1]
-                    
                     return {
                         'support': recent_low,
                         'resistance': recent_high,
                         'current_vs_support': (current_price - recent_low) / recent_low * 100,
                         'current_vs_resistance': (current_price - recent_high) / recent_high * 100
                     }
-            
             return {'support': 0, 'resistance': 0, 'current_vs_support': 0, 'current_vs_resistance': 0}
         except Exception as e:
             print(f"❌ Ошибка поиска уровней поддержки/сопротивления: {e}")
@@ -237,15 +215,13 @@ class MarketAnalyzer:
         """🎪 ОПРЕДЕЛЕНИЕ РЕЖИМА РЫНКА ДЛЯ РЕАЛЬНОГО РЕЖИМА"""
         try:
             analysis = self.multi_timeframe_analysis(symbol, [])
-            
             trends = [analysis['trend_1'], analysis['trend_5'], analysis['trend_15']]
             bull_count = trends.count('bullish')
             bear_count = trends.count('bearish')
-            
             if bull_count >= 2:
                 return "strong_bull"
             elif bear_count >= 2:
-                return "strong_bear" 
+                return "strong_bear"
             else:
                 avg_volatility = (analysis['volatility_1'] + analysis['volatility_5']) / 2
                 if avg_volatility < 0.008:
