@@ -4,7 +4,7 @@
 """
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 def format_price(price):
     """💰 ФОРМАТИРОВАНИЕ ЦЕНЫ ДЛЯ ВЫВОДА"""
@@ -30,7 +30,6 @@ def calculate_time_left(end_time):
     time_left_seconds = end_time - time.time()
     if time_left_seconds <= 0:
         return "00:00"
-    
     hours = int(time_left_seconds // 3600)
     minutes = int((time_left_seconds % 3600) // 60)
     return f"{hours:02d}:{minutes:02d}"
@@ -74,17 +73,12 @@ def format_duration(minutes):
 def validate_parameters(grid_levels, order_size, grid_spacing, duration):
     """✅ ПРОВЕРКА ВАЛИДНОСТИ ПАРАМЕТРОВ"""
     errors = []
-    
     if grid_levels < 1 or grid_levels > 10:
         errors.append("Количество уровней должно быть от 1 до 10")
-    
     if order_size <= 0 or order_size > 0.01:
         errors.append("Размер ордера должен быть от 0.0001 до 0.01 BTC")
-    
     if grid_spacing <= 0 or grid_spacing > 0.05:
         errors.append("Расстояние между уровнями должно быть от 0.1% до 5%")
-    
     if duration < 1 or duration > 1440:
         errors.append("Время работы должно быть от 1 до 1440 минут")
-    
     return errors
