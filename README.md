@@ -1,7 +1,7 @@
 # GRID-TRADING-BOT
 
 # 1. Создать окружение
-python -m venv grid_bot_env
+python3 -m venv grid_bot_env
 
 # 2. Активировать
 # Windows:
