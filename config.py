@@ -1,4 +1,10 @@
 # config.py
+"""
+Configuration module for Grid Trading Bot.
+
+This module handles loading and validation of environment variables 
+and configuration settings for the trading bot.
+"""
 import os
 from dotenv import load_dotenv
 
@@ -49,7 +55,6 @@ COMMISSION_UPDATE_INTERVAL = 3600  # 1 час
 def validate_config():
     """Проверяет, что все необходимые переменные загружены"""
     missing_vars = []
-    
     if not BYBIT_API_KEY:
         missing_vars.append("BYBIT_API_KEY")
     if not BYBIT_API_SECRET:
@@ -58,17 +63,15 @@ def validate_config():
         missing_vars.append("TELEGRAM_TOKEN")
     if not TELEGRAM_CHAT_ID:
         missing_vars.append("TELEGRAM_CHAT_ID")
-    
     if missing_vars:
         print(f"⚠️  ВНИМАНИЕ: Отсутствуют переменные окружения: {', '.join(missing_vars)}")
         print("   Убедитесь, что файл .env создан и содержит все необходимые ключи")
         return False
-    
     print("✅ Все переменные окружения загружены успешно")
     return True
 
 # Автопроверка при импорте модуля
-config_valid = validate_config()
+CONFIG_VALID = validate_config()
 
 if __name__ == "__main__":
     # Тестовый вывод конфигурации (без секретов)
