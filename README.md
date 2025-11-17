@@ -11,3 +11,54 @@ source grid_bot_env/bin/activate
 
 # 3. Установить зависимости
 pip install pybit requests numpy
+
+Способ 1: Перенаправление вывода через systemd (рекомендую)
+Измените ваш service файл:
+
+bash
+sudo nano /etc/systemd/system/grid-bot.service
+Замените секцию [Service] на:
+
+ini
+[Service]
+Type=simple
+User=test-bot
+Group=test-bot
+WorkingDirectory=/home/test-bot/GRID-TRADING-BOT-dev
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash -c "/home/test-bot/GRID-TRADING-BOT-dev/grid_bot_env/bin/python /home/test-bot/GRID-TRADING-BOT-dev/main.py >> /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log 2>&1"
+ExecStop=/bin/kill -SIGTERM $MAINPID
+Restart=always
+RestartSec=10
+SyslogIdentifier=grid-bot-test
+
+# Ограничения для безопасности
+MemoryLimit=512M
+CPUQuota=100%
+Затем выполните:
+
+bash
+# Создаем папку для логов
+mkdir -p /home/test-bot/GRID-TRADING-BOT-dev/logs
+
+# Даем права
+sudo chown test-bot:test-bot /home/test-bot/GRID-TRADING-BOT-dev/logs
+
+# Перезагружаем службу
+sudo systemctl daemon-reload
+sudo systemctl restart grid-bot.service
+
+Способ 3: Использование tee для дублирования вывода
+Если хотите видеть вывод И в журнал И в файл:
+
+ini
+ExecStart=/bin/bash -c "/home/test-bot/GRID-TRADING-BOT-dev/grid_bot_env/bin/python /home/test-bot/GRID-TRADING-BOT-dev/main.py 2>&1 | tee -a /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log"
+Проверка
+После настройки:
+
+bash
+# Следим за логом в реальном времени
+tail -f /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log
+
+# Или следим за службой
+sudo journalctl -u grid-bot.service -f
