@@ -9,7 +9,6 @@ from config import BYBIT_API_KEY, BYBIT_API_SECRET, DEMO_MODE
 
 class APIClient:
     """🔧 КЛИЕНТ ДЛЯ РАБОТЫ С BYBIT API"""
-    
     def __init__(self):
         """Инициализация клиента API"""
         self.session = HTTP(
@@ -51,7 +50,6 @@ class APIClient:
         """🔄 НАДЕЖНЫЙ ВЫЗОВ API С ПОВТОРНЫМИ ПОПЫТКАМИ"""
         # ... остальной код метода БЕЗ изменений ...
         retry_delay = 5
-        
         for attempt in range(self.max_retries):
             try:
                 result = api_function(*args, **kwargs)
@@ -59,7 +57,6 @@ class APIClient:
             except Exception as e:
                 self.api_errors += 1
                 print(f"❌ Ошибка API (попытка {attempt + 1}/{self.max_retries}): {e}")
-                
                 if attempt < self.max_retries - 1:
                     print(f"🔄 Повтор через {retry_delay} секунд...")
                     time.sleep(retry_delay)
@@ -73,10 +70,10 @@ class APIClient:
         try:
             ticker = self.robust_api_call(
                 self.session.get_tickers,
-                category="spot", 
+                category="spot",
                 symbol=symbol
             )
-            if (ticker and 
+            if (ticker and
                 'result' in ticker and 
                 'list' in ticker['result'] and 
                 len(ticker['result']['list']) > 0 and
@@ -94,13 +91,12 @@ class APIClient:
                 self.session.get_wallet_balance,
                 accountType="UNIFIED"
             )
-            if (not balance or 
+            if (not balance or
                 'result' not in balance or 
                 'list' not in balance['result'] or 
                 len(balance['result']['list']) == 0 or
                 'coin' not in balance['result']['list'][0]):
                 return 0, 0
-                
             usdt_balance = 0
             btc_balance = 0
             for coin in balance['result']['list'][0]['coin']:
@@ -136,7 +132,7 @@ class APIClient:
         try:
             result = self.robust_api_call(
                 self.session.cancel_all_orders,
-                category="spot", 
+                category="spot",
                 symbol=symbol
             )
             return result
@@ -149,11 +145,10 @@ class APIClient:
         try:
             orders = self.robust_api_call(
                 self.session.get_open_orders,
-                category="spot", 
+                category="spot",
                 symbol=symbol
             )
             return orders
         except Exception as e:
             print(f"❌ Ошибка получения открытых ордеров: {e}")
             return None
-            
