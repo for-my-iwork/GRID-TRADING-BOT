@@ -94,4 +94,4 @@ if __name__ == "__main__":
     print(f"DEFAULT_MAKER_FEE: {DEFAULT_MAKER_FEE}")
     print(f"DEFAULT_TAKER_FEE: {DEFAULT_TAKER_FEE}")
     print(f"COMMISSION_UPDATE_INTERVAL: {COMMISSION_UPDATE_INTERVAL}")
-    print(f"Конфигурация {'валидна' if config_valid else 'невалидна'}")
+    print(f"Конфигурация {'валидна' if CONFIG_VALID else 'невалидна'}")
