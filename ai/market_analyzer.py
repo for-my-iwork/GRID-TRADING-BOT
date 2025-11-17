@@ -126,21 +126,21 @@ class MarketAnalyzer:
     def determine_market_regime_demo(self, volatility, trend):
         """🎪 ОПРЕДЕЛЕНИЕ РЕЖИМА РЫНКА ДЛЯ ДЕМО-РЕЖИМА"""
         try:
-            # Определяем силу тренда
-            trend_strength = abs(trend)
-            
+            # Определяем есть ли тренд (bullish/bearish) или нет (neutral/unknown)
+            has_trend = trend in ["bullish", "bearish"]
+        
             if volatility > 0.02:
-                if trend_strength > 0.01:
+                if has_trend:
                     return "trending_high_volatility"
                 else:
                     return "ranging_high_volatility"
             elif volatility < 0.005:
-                if trend_strength > 0.005:
+                if has_trend:
                     return "trending_low_volatility" 
                 else:
                     return "ranging_low_volatility"
             else:
-                if trend_strength > 0.01:
+                if has_trend:
                     return "trending_normal_volatility"
                 else:
                     return "ranging_normal_volatility"
