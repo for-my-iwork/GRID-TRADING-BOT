@@ -1,4 +1,4 @@
-# main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ С АВТОКОНФИГОМ
+# main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ С АВТОКОНФИГОМ И ЛОГИРОВАНИЕМ
 """
 🚀 ADVANCED GRID TRADING BOT v9.2
 Главный запускающий файл
@@ -11,8 +11,48 @@ import signal
 import sys
 import atexit
 import os
+import logging
+from datetime import datetime
 
 warnings.filterwarnings('ignore')
+
+def setup_logging():
+    """📝 НАСТРОЙКА ЛОГИРОВАНИЯ В ФАЙЛ И КОНСОЛЬ"""
+    try:
+        # Создаем папку logs если нет
+        os.makedirs('logs', exist_ok=True)
+        
+        # Форматирование логов
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        
+        # Создаем основной логгер
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        
+        # Очищаем существующие handlers (если есть)
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+        
+        # File handler - пишет в файл
+        file_handler = logging.FileHandler(
+            f'logs/bot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log',
+            encoding='utf-8'
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        
+        # Stream handler - пишет в консоль (для systemd journal)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+        
+        logging.info("=== Logging setup completed ===")
+        return True
+    except Exception as e:
+        print(f"❌ Ошибка настройки логирования: {e}")
+        return False
 
 # Проверяем наличие конфига автостарта
 AUTO_CONFIG_EXISTS = os.path.exists('auto_config.py')
@@ -39,15 +79,15 @@ def save_auto_config(mode, duration, grid_levels=None, grid_spacing=None, grid_r
                 f.write(f'AI_GRID_SPACING = {grid_spacing}\n')
                 f.write(f'AI_GRID_REFRESH = {grid_refresh}\n')
         
-        print(f"✅ Настройки сохранены в auto_config.py: режим {mode}, время {duration} мин")
+        logging.info(f"✅ Настройки сохранены в auto_config.py: режим {mode}, время {duration} мин")
         return True
     except Exception as e:
-        print(f"❌ Ошибка сохранения конфига: {e}")
+        logging.error(f"❌ Ошибка сохранения конфига: {e}")
         return False
 
 def signal_handler(signum, frame):
     """🔄 ОБРАБОТЧИК СИГНАЛОВ ДЛЯ GRACEFUL SHUTDOWN"""
-    print(f"\n🛑 Received signal {signum}, shutting down gracefully...")
+    logging.info(f"🛑 Received signal {signum}, shutting down gracefully...")
     try:
         # Очищаем состояние при принудительном завершении
         clear_state()
@@ -65,8 +105,11 @@ def is_systemd_launch():
 
 def main():
     """🚀 ГЛАВНАЯ ФУНКЦИЯ ДЛЯ ЗАПУСКА БОТА"""
-    print("🚀 Запуск AI-УЛУЧШЕННОГО Grid Bot v9.2...")
-    print("=" * 50)
+    # Настраиваем логирование в самом начале
+    setup_logging()
+    
+    logging.info("🚀 Запуск AI-УЛУЧШЕННОГО Grid Bot v9.2...")
+    logging.info("=" * 50)
     
     # Определяем тип запуска
     IS_SYSTEMD_LAUNCH = is_systemd_launch()
@@ -82,8 +125,8 @@ def main():
     
     # АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD
     if IS_SYSTEMD_LAUNCH and AUTO_CONFIG_EXISTS and AUTO_START:
-        print("🤖 АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD")
-        print(f"📋 Загружены настройки: режим {AUTO_MODE}, время {AUTO_DURATION} мин")
+        logging.info("🤖 АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD")
+        logging.info(f"📋 Загружены настройки: режим {AUTO_MODE}, время {AUTO_DURATION} мин")
         
         # Устанавливаем параметры из конфига
         bot.ai_mode = True if AUTO_MODE == 3 else False
@@ -94,46 +137,46 @@ def main():
             bot.grid_levels = AI_GRID_LEVELS
             bot.grid_spacing = AI_GRID_SPACING
             bot.grid_refresh_time = AI_GRID_REFRESH
-            print(f"🧠 AI параметры: уровни {AI_GRID_LEVELS}, расстояние {AI_GRID_SPACING*100:.3f}%, обновление {AI_GRID_REFRESH} сек")
+            logging.info(f"🧠 AI параметры: уровни {AI_GRID_LEVELS}, расстояние {AI_GRID_SPACING*100:.3f}%, обновление {AI_GRID_REFRESH} сек")
         
-        print("✅ Параметры установлены из auto_config.py")
+        logging.info("✅ Параметры установлены из auto_config.py")
         
         try:
             profit, stopped = bot.run_ai_enhanced_monitoring()
             
             if stopped:
                 if hasattr(bot, 'max_api_errors') and bot.api_errors >= bot.max_api_errors:
-                    print("\n🛑 Работа остановлена из-за большого количества ошибок API!")
+                    logging.info("\n🛑 Работа остановлена из-за большого количества ошибок API!")
                 elif bot.user_commanded_stop:
-                    print("\n🛑 Работа остановлена по команде пользователя!")
+                    logging.info("\n🛑 Работа остановлена по команде пользователя!")
                 elif bot.user_commanded_emergency_stop:
-                    print("\n🛑 Аварийная остановка по команде пользователя!")
+                    logging.info("\n🛑 Аварийная остановка по команде пользователя!")
                 else:
-                    print("\n🛑 Работа остановлена по условию стоп-лосса!")
+                    logging.info("\n🛑 Работа остановлена по условию стоп-лосса!")
             else:
-                print("\n🛑 Завершение работы по таймеру...")
+                logging.info("\n🛑 Завершение работы по таймеру...")
             
             if profit > 0:
-                print(f"🎉 Бот ЗАРАБОТАЛ: +{profit:.4f} USDT!")
+                logging.info(f"🎉 Бот ЗАРАБОТАЛ: +{profit:.4f} USDT!")
             else:
-                print(f"📉 Бот в минусе: {profit:.4f} USDT")
+                logging.info(f"📉 Бот в минусе: {profit:.4f} USDT")
                 
         except KeyboardInterrupt:
-            print(f"\n\n⏹️  Прервано пользователем")
+            logging.info(f"\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
             except:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+                logging.info("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
             except:
                 pass
         except Exception as e:
-            print(f"💥 Критическая ошибка: {e}")
+            logging.error(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
             except:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+                logging.info("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
             except:
@@ -161,17 +204,17 @@ def main():
                 if confirm != 'y':
                     # Переходим к обычной интерактивной настройке
                     if not bot.interactive_setup():
-                        print("❌ Запуск отменен пользователем.")
+                        logging.info("❌ Запуск отменен пользователем.")
                         return
             else:
                 # Пользователь хочет новые настройки
                 if not bot.interactive_setup():
-                    print("❌ Запуск отменен пользователем.")
+                    logging.info("❌ Запуск отменен пользователем.")
                     return
         else:
             # Обычная интерактивная настройка
             if not bot.interactive_setup():
-                print("❌ Запуск отменен пользователем.")
+                logging.info("❌ Запуск отменен пользователем.")
                 return
         
         # После настройки предлагаем сохранить для автозапуска
@@ -199,37 +242,37 @@ def main():
             
             if stopped:
                 if hasattr(bot, 'max_api_errors') and bot.api_errors >= bot.max_api_errors:
-                    print("\n🛑 Работа остановлена из-за большого количества ошибок API!")
+                    logging.info("\n🛑 Работа остановлена из-за большого количества ошибок API!")
                 elif bot.user_commanded_stop:
-                    print("\n🛑 Работа остановлена по команде пользователя!")
+                    logging.info("\n🛑 Работа остановлена по команде пользователя!")
                 elif bot.user_commanded_emergency_stop:
-                    print("\n🛑 Аварийная остановка по команде пользователя!")
+                    logging.info("\n🛑 Аварийная остановка по команде пользователя!")
                 else:
-                    print("\n🛑 Работа остановлена по условию стоп-лосса!")
+                    logging.info("\n🛑 Работа остановлена по условию стоп-лосса!")
             else:
-                print("\n🛑 Завершение работы по таймеру...")
+                logging.info("\n🛑 Завершение работы по таймеру...")
             
             if profit > 0:
-                print(f"🎉 Бот ЗАРАБОТАЛ: +{profit:.4f} USDT!")
+                logging.info(f"🎉 Бот ЗАРАБОТАЛ: +{profit:.4f} USDT!")
             else:
-                print(f"📉 Бот в минусе: {profit:.4f} USDT")
+                logging.info(f"📉 Бот в минусе: {profit:.4f} USDT")
                 
         except KeyboardInterrupt:
-            print(f"\n\n⏹️  Прервано пользователем")
+            logging.info(f"\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
             except:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+                logging.info("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
             except:
                 pass
         except Exception as e:
-            print(f"💥 Критическая ошибка: {e}")
+            logging.error(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
             except:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+                logging.info("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
             except:
