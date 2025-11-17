@@ -48,7 +48,6 @@ class APIClient:
 
     def robust_api_call(self, api_function, *args, **kwargs):
         """🔄 НАДЕЖНЫЙ ВЫЗОВ API С ПОВТОРНЫМИ ПОПЫТКАМИ"""
-        # ... остальной код метода БЕЗ изменений ...
         retry_delay = 5
         for attempt in range(self.max_retries):
             try:
@@ -63,7 +62,7 @@ class APIClient:
                     retry_delay *= 2
                 else:
                     print("❌ Превышено максимальное количество попыток")
-                    return None
+                    return {"error": True, "message": str(e), "exception": e}
 
     def get_current_price(self, symbol):
         """💰 ПОЛУЧЕНИЕ ТЕКУЩЕЙ ЦЕНЫ"""
