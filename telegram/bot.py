@@ -11,7 +11,6 @@ from .commands import TelegramCommands
 
 class TelegramBot:
     """📱 TELEGRAM БОТ ДЛЯ УПРАВЛЕНИЯ И УВЕДОМЛЕНИЙ"""
-    
     def __init__(self, api_client):
         self.token = TELEGRAM_TOKEN
         self.chat_id = TELEGRAM_CHAT_ID
@@ -53,10 +52,8 @@ class TelegramBot:
         price = data.get('price', 0)
         commission = data.get('commission', 0)
         timestamp = data.get('timestamp', 'N/A')
-        
         trade_value = qty * price
         commission_percentage = (commission / trade_value * 100) if trade_value > 0 else 0
-        
         message = f"""
 ✅ <b>ОРДЕР ИСПОЛНЕН</b>
 
@@ -99,7 +96,6 @@ class TelegramBot:
             # Получаем данные о комиссиях (если переданы)
             maker_fee = data.get('maker_fee', 0.1)  # Значение по умолчанию 0.1%
             taker_fee = data.get('taker_fee', 0.1)  # Значение по умолчанию 0.1%
-            
             message = f"""
 📊 <b>ПЕРИОДИЧЕСКИЙ ОТЧЕТ v9.2</b>
 
@@ -168,28 +164,23 @@ class TelegramBot:
                 'offset': self.last_update_id + 1,
                 'timeout': 5
             }
-            
             response = requests.get(url, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('ok') and data.get('result'):
                     for update in data['result']:
                         self.last_update_id = update['update_id']
-                        
                         if 'message' in update and 'text' in update['message']:
                             text = update['message']['text']
                             chat_id = update['message']['chat']['id']
                             message_time = update['message'].get('date', time.time())
-                            
                             # Проверяем, что сообщение не старше 5 минут
                             current_time = time.time()
                             if current_time - message_time > 300:  # 5 минут
                                 print(f"⚠️ Пропускаем старое сообщение: {text}")
                                 continue
-                            
                             if str(chat_id) == self.chat_id:
                                 self.commands_handler.process_command(text, bot_instance)
-            
         except Exception as e:
             print(f"❌ Ошибка проверки Telegram команд: {e}")
 
