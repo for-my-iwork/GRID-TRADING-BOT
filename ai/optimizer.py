@@ -38,7 +38,7 @@ class AIOptimizer:
             # Оптимизация времени работы
             optimized_duration = self.ai_optimize_session_duration(
                 market_regime, session_duration
-            )   
+            )
             return {
                 'grid_levels': levels,
                 'grid_spacing': spacing,
