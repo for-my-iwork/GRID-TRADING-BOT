@@ -715,7 +715,6 @@ class AdvancedGridBot:
             
             final_balance = self.get_total_balance_usdt()
             total_profit = final_balance - initial_total_balance
-            
             # Отправляем финальный отчет
             final_stats = {
                 'initial_balance': initial_total_balance,
@@ -729,9 +728,7 @@ class AdvancedGridBot:
                 'running_time': self.get_running_time(),
                 'market_regime': self.market_regime
             }
-            
             self.reporter.send_final_report(final_stats)
-            
             # 🔴 ВАЖНОЕ ИСПРАВЛЕНИЕ: Очищаем состояние ТОЛЬКО при завершении сессии по времени
             # НИКОГДА не очищаем при остановке systemd службы!
             if not self.trading_paused and not self.shutdown_requested:
@@ -739,15 +736,12 @@ class AdvancedGridBot:
                 clear_state()
             else:
                 print("🔄 Остановка без очистки состояния (для восстановления)")
-            
             print(f"📊 Всего ошибок API: {self.api_errors}")
             print(f"📊 Сеток создано: {self.grid_count}")
             print(f"📦 Ордеров размещено: {self.total_orders_created}")
             print(f"✅ Ордеров исполнено: {self.executed_orders_count}")
             print(f"💸 Комиссий уплачено: {self.total_commission:.4f} USDT")
-            
             return total_profit, stop_triggered
-            
         except Exception as e:
             error_msg = f"Критическая ошибка в основном цикле: {e}"
             print(f"❌ {error_msg}")
@@ -761,20 +755,16 @@ class AdvancedGridBot:
                 self.last_balance_usdt = current_usdt
                 self.last_balance_btc = current_btc
                 return
-            
             usdt_change = current_usdt - self.last_balance_usdt
             btc_change = current_btc - self.last_balance_btc
-            
             order_threshold = self.order_size * 0.8
             if abs(btc_change) > order_threshold:
                 if current_price:
                     # Расчет комиссий для каждого ордера
                     trade_value = abs(btc_change) * current_price
-                    
                     if btc_change > 0:  # BUY ордер
                         commission = self.commission_tracker.calculate_taker_commission(abs(btc_change), current_price)
                         self.total_commission += commission
-                        
                         order_data = {
                             'side': 'BUY',
                             'qty': btc_change,
@@ -785,11 +775,9 @@ class AdvancedGridBot:
                         self.executed_orders_count += 1
                         self.telegram_bot.send_order_alert(order_data)
                         print(f"✅ Обнаружена покупка: {btc_change:.6f} BTC по {current_price:.1f} | Комиссия: {commission:.4f} USDT")
-                    
                     elif btc_change < 0:  # SELL ордер
                         commission = self.commission_tracker.calculate_taker_commission(abs(btc_change), current_price)
                         self.total_commission += commission
-                        
                         order_data = {
                             'side': 'SELL', 
                             'qty': abs(btc_change),
@@ -800,13 +788,10 @@ class AdvancedGridBot:
                         self.executed_orders_count += 1
                         self.telegram_bot.send_order_alert(order_data)
                         print(f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC по {current_price:.1f} | Комиссия: {commission:.4f} USDT")
-                    
                     # Сохраняем состояние после исполнения ордера
                     self._save_state_safe()
-            
             self.last_balance_usdt = current_usdt
-            self.last_balance_btc = current_btc
-            
+            self.last_balance_btc = current_btc            
         except Exception as e:
             print(f"❌ Ошибка проверки исполненных ордеров: {e}")
 
@@ -832,7 +817,6 @@ class AdvancedGridBot:
         try:
             total_balance = usdt_balance + (btc_balance * current_price) if current_price else 0
             rates = self.commission_tracker.get_current_rates()
-            
             self.telegram_bot.send_periodic_report({
                 'running_time': self.get_running_time(),
                 'usdt_balance': usdt_balance,
@@ -852,7 +836,7 @@ class AdvancedGridBot:
     def send_telegram_message(self, message):
         """📨 ОТПРАВКА СООБЩЕНИЯ В TELEGRAM (для обратной совместимости)"""
         return self.telegram_bot.send_message(message)
-        
+
     def cancel_all_orders_safe(self):
         """🛑 БЕЗОПАСНАЯ ОТМЕНА ВСЕХ ОРДЕРОВ (для обратной совместимости)"""
         return self.order_manager.cancel_all_orders(self.symbol)
