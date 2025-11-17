@@ -62,7 +62,7 @@ class APIClient:
                     retry_delay *= 2
                 else:
                     print("❌ Превышено максимальное количество попыток")
-                    return {"error": True, "message": str(e), "exception": e}
+                    return None  # Явно возвращаем None вместо словаря
 
     def get_current_price(self, symbol):
         """💰 ПОЛУЧЕНИЕ ТЕКУЩЕЙ ЦЕНЫ"""
