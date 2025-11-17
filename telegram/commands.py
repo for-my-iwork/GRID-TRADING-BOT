@@ -8,7 +8,6 @@ from datetime import datetime
 
 class TelegramCommands:
     """📱 ОБРАБОТКА КОМАНД TELEGRAM ДЛЯ GRID BOT"""
-    
     def __init__(self, telegram_bot, api_client):
         self.telegram_bot = telegram_bot
         self.api_client = api_client
@@ -17,15 +16,12 @@ class TelegramCommands:
     def process_command(self, command, bot_instance):
         """⚙️ ОСНОВНОЙ ОБРАБОТЧИК КОМАНД"""
         command = command.lower().strip()
-        
         current_time = time.time()
         if command in self.command_cooldown:
             if current_time - self.command_cooldown[command] < 5:
                 self.telegram_bot.send_message("⏳ Слишком частые команды. Подождите 5 секунд.")
                 return
-        
         self.command_cooldown[command] = current_time
-        
         if command == '/stop':
             self.handle_stop_command(bot_instance)
         elif command == '/shutdown':
@@ -113,14 +109,12 @@ class TelegramCommands:
             current_price = self.api_client.get_current_price('BTCUSDT')
             usdt, btc = self.api_client.get_balance()
             total = usdt + (btc * current_price) if current_price else 0
-            
             # Проверяем режим работы бота
             trading_status = "🟢 Активен"
             if hasattr(bot_instance, 'trading_paused') and bot_instance.trading_paused:
                 trading_status = "⏸️ На паузе"
             if hasattr(bot_instance, 'is_running') and not bot_instance.is_running:
                 trading_status = "🔴 Остановлен"
-            
             status = f"""
 📊 <b>ТЕКУЩИЙ СТАТУС v9.2</b>
 
@@ -148,7 +142,6 @@ class TelegramCommands:
             current_price = self.api_client.get_current_price('BTCUSDT')
             usdt, btc = self.api_client.get_balance()
             total = usdt + (btc * current_price) if current_price else 0
-            
             if hasattr(bot_instance, 'initial_usdt') and hasattr(bot_instance, 'initial_btc'):
                 initial_total = bot_instance.initial_usdt + (bot_instance.initial_btc * getattr(bot_instance, 'initial_price', current_price))
                 profit = total - initial_total
@@ -156,7 +149,6 @@ class TelegramCommands:
             else:
                 profit = 0
                 profit_pct = 0
-            
             report = f"""
 💰 <b>БАЛАНС И PnL</b>
 
@@ -180,7 +172,6 @@ class TelegramCommands:
             trading_status = "🟢 Активен"
             if hasattr(bot_instance, 'trading_paused') and bot_instance.trading_paused:
                 trading_status = "⏸️ На паузе"
-            
             params = f"""
 ⚙️ <b>ТЕКУЩИЕ ПАРАМЕТРЫ v9.2</b>
 
