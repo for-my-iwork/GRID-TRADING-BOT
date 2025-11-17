@@ -126,12 +126,24 @@ class MarketAnalyzer:
     def determine_market_regime_demo(self, volatility, trend):
         """🎪 ОПРЕДЕЛЕНИЕ РЕЖИМА РЫНКА ДЛЯ ДЕМО-РЕЖИМА"""
         try:
+            # Определяем силу тренда
+            trend_strength = abs(trend)
+            
             if volatility > 0.02:
-                return "high_volatility"
+                if trend_strength > 0.01:
+                    return "trending_high_volatility"
+                else:
+                    return "ranging_high_volatility"
             elif volatility < 0.005:
-                return "low_volatility"
+                if trend_strength > 0.005:
+                    return "trending_low_volatility" 
+                else:
+                    return "ranging_low_volatility"
             else:
-                return "normal_volatility"
+                if trend_strength > 0.01:
+                    return "trending_normal_volatility"
+                else:
+                    return "ranging_normal_volatility"
         except Exception as e:
             print(f"❌ Ошибка определения режима рынка (демо): {e}")
             return "unknown"
