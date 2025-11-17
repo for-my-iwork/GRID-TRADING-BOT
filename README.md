@@ -62,3 +62,17 @@ tail -f /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log
 
 # Или следим за службой
 sudo journalctl -u grid-bot.service -f
+
+Несколько полезных команд для работы с логами:
+bash
+# Просмотр лога в реальном времени
+tail -f /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log
+
+# Просмотр последних 100 строк
+tail -n 100 /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log
+
+# Поиск ошибок в логе
+grep -i "error\|exception\|fail" /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log
+
+# Размер лог-файла
+ls -lh /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log
