@@ -18,7 +18,10 @@ warnings.filterwarnings('ignore')
 AUTO_CONFIG_EXISTS = os.path.exists('auto_config.py')
 
 if AUTO_CONFIG_EXISTS:
-    from auto_config import AUTO_START, AUTO_MODE, AUTO_DURATION, AI_GRID_LEVELS, AI_GRID_SPACING, AI_GRID_REFRESH
+    from auto_config import (
+        AUTO_START, AUTO_MODE, AUTO_DURATION, AI_GRID_LEVELS, 
+        AI_GRID_SPACING, AI_GRID_REFRESH
+    )
 
 def save_auto_config(mode, duration, grid_levels=None, grid_spacing=None, grid_refresh=None):
     """💾 СОХРАНЕНИЕ НАСТРОЕК ДЛЯ АВТОМАТИЧЕСКОГО ЗАПУСКА"""
@@ -85,7 +88,9 @@ def main():
             bot.grid_levels = AI_GRID_LEVELS
             bot.grid_spacing = AI_GRID_SPACING
             bot.grid_refresh_time = AI_GRID_REFRESH
-            print(f"🧠 AI параметры: уровни {AI_GRID_LEVELS}, расстояние {AI_GRID_SPACING*100:.3f}%, обновление {AI_GRID_REFRESH} сек")
+            print(f"🧠 AI параметры: уровни {AI_GRID_LEVELS}, "
+                  f"расстояние {AI_GRID_SPACING*100:.3f}%, "
+                  f"обновление {AI_GRID_REFRESH} сек")
         print("✅ Параметры установлены из auto_config.py")
         try:
             profit, stopped = bot.run_ai_enhanced_monitoring()
@@ -129,7 +134,9 @@ def main():
         # При ручном запуске с существующим конфигом - предлагаем выбор
         if AUTO_CONFIG_EXISTS and AUTO_START:
             print("📁 Обнаружен файл auto_config.py")
-            use_auto = input("🤖 Использовать сохраненные настройки для автоматического запуска? (y/n): ").strip().lower()
+            use_auto = input(
+                "🤖 Использовать сохраненные настройки для автоматического запуска? (y/n): "
+            ).strip().lower()
             if use_auto == 'y':
                 print("🤖 Запуск с сохраненными настройками...")
                 bot.ai_mode = True if AUTO_MODE == 3 else False
@@ -156,7 +163,9 @@ def main():
                 print("❌ Запуск отменен пользователем.")
                 return
         # После настройки предлагаем сохранить для автозапуска
-        save_config = input("\n💾 Сохранить настройки для автоматического запуска? (y/n): ").strip().lower()
+        save_config = input(
+            "\n💾 Сохранить настройки для автоматического запуска? (y/n): "
+        ).strip().lower()
         if save_config == 'y':
             mode = 3 if bot.ai_mode else 1  # Определяем номер режима
             # Для AI-режима сохраняем дополнительные параметры
