@@ -527,7 +527,7 @@ class AdvancedGridBot:
             self.last_telegram_report = start_time
             # Создаем первую сетку только если не на паузе
             if not self.trading_paused:
-                orders_placed = self.order_manager.create_grid(
+                self.order_manager.create_grid(
                     self.symbol, self.grid_levels, self.order_size,
                     self.grid_spacing, self.initial_price
                 )
@@ -666,7 +666,7 @@ class AdvancedGridBot:
                                     f"taker={rates['taker_fee']*100:.4f}%"
                                 )
                         # Создание новой сетки
-                        new_orders = self.order_manager.create_grid(
+                        self.order_manager.create_grid(
                             self.symbol, self.grid_levels, self.order_size,
                             self.grid_spacing, current_price
                         )
@@ -725,13 +725,11 @@ class AdvancedGridBot:
                 self.last_balance_usdt = current_usdt
                 self.last_balance_btc = current_btc
                 return
-            usdt_change = current_usdt - self.last_balance_usdt
             btc_change = current_btc - self.last_balance_btc
             order_threshold = self.order_size * 0.8
             if abs(btc_change) > order_threshold:
                 if current_price:
                     # Расчет комиссий для каждого ордера
-                    trade_value = abs(btc_change) * current_price
                     if btc_change > 0:  # BUY ордер
                         commission = self.commission_tracker.calculate_taker_commission(
                             abs(btc_change), current_price
