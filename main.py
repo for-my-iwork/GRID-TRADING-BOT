@@ -4,13 +4,13 @@
 Главный запускающий файл
 """
 
-from core.grid_bot import AdvancedGridBot
-from analytics.logger import clear_state
 import warnings
 import signal
 import sys
 import atexit
 import os
+from core.grid_bot import AdvancedGridBot
+from analytics.logger import clear_state
 
 warnings.filterwarnings('ignore')
 
