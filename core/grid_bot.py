@@ -18,14 +18,7 @@ from config import (
     MAX_DRAWDOWN_PCT,
     MIN_SESSION_DURATION,
     MAX_SESSION_DURATION,
-    DEMO_MODE,
-    AI_GRID_LEVELS,
-    AI_GRID_SPACING,
-    AI_GRID_REFRESH,
-    AUTO_START,
-    AUTO_MODE,
-    AUTO_DURATION,
-    IS_SYSTEMD_LAUNCH
+    DEMO_MODE
 )
 from utils.api_client import APIClient
 from ai.market_analyzer import MarketAnalyzer
