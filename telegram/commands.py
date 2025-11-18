@@ -94,7 +94,8 @@ class TelegramCommands:
                     "Бот снова размещает ордера и работает в нормальном режиме."
                 )
             else:
-                self.telegram_bot.send_message("❌ Функция возобновления недоступна в этой версии бота")
+                self.telegram_bot.send_message(
+                    "❌ Функция возобновления недоступна в этой версии бота")
         except Exception as e:
             self.telegram_bot.send_message(f"❌ Ошибка при возобновлении: {e}")
 
@@ -143,7 +144,9 @@ class TelegramCommands:
             usdt, btc = self.api_client.get_balance()
             total = usdt + (btc * current_price) if current_price else 0
             if hasattr(bot_instance, 'initial_usdt') and hasattr(bot_instance, 'initial_btc'):
-                initial_total = bot_instance.initial_usdt + (bot_instance.initial_btc * getattr(bot_instance, 'initial_price', current_price))
+                initial_total = bot_instance.initial_usdt + (
+                    bot_instance.initial_btc * getattr(
+                        bot_instance, 'initial_price', current_price))
                 profit = total - initial_total
                 profit_pct = (profit / initial_total * 100) if initial_total > 0 else 0
             else:
@@ -245,7 +248,8 @@ class TelegramCommands:
 
     def handle_unknown_command(self, command):
         """❓ ОБРАБОТКА НЕИЗВЕСТНОЙ КОМАНДЫ"""
-        self.telegram_bot.send_message(f"❓ Неизвестная команда: {command}\nИспользуйте /help для списка команд.")
+        self.telegram_bot.send_message(
+            f"❓ Неизвестная команда: {command}\nИспользуйте /help для списка команд.")
 
     def cleanup(self):
         """🧹 ОЧИСТКА РЕСУРСОВ"""
