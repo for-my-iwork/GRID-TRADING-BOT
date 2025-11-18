@@ -143,7 +143,7 @@ class MarketAnalyzer:
                     return "ranging_high_volatility"
             elif volatility < 0.005:
                 if has_trend:
-                    return "trending_low_volatility" 
+                    return "trending_low_volatility"
                 else:
                     return "ranging_low_volatility"
             else:
