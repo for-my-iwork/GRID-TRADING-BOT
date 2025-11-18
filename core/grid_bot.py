@@ -560,7 +560,10 @@ class AdvancedGridBot:
                                 self.grid_spacing = ai_recommendations['grid_spacing']
                                 self.grid_refresh_time = ai_recommendations['grid_refresh_time']
                                 if old_spacing != self.grid_spacing or old_levels != self.grid_levels:
-                                    print(f"🧠 AI оптимизация: уровни {old_levels}→{self.grid_levels}, расстояние {old_spacing*100:.2f}%→{self.grid_spacing*100:.2f}%")
+                                    print(
+                                        f"🧠 AI оптимизация: уровни {old_levels}→{self.grid_levels}, "
+                                        f"расстояние {old_spacing*100:.2f}%→{self.grid_spacing*100:.2f}%"
+                                    )
                                     self.telegram_bot.send_ai_optimization_alert({
                                         'volatility': ai_recommendations.get('volatility', 0),
                                         'old_spacing': old_spacing,
@@ -576,7 +579,10 @@ class AdvancedGridBot:
                             print("🔄 Обновление комиссий...")
                             if self.commission_tracker.update_commission_rates():
                                 rates = self.commission_tracker.get_current_rates()
-                                print(f"✅ Комиссии обновлены: maker={rates['maker_fee']*100:.4f}%, taker={rates['taker_fee']*100:.4f}%")
+                                print(
+                                    f"✅ Комиссии обновлены: maker={rates['maker_fee']*100:.4f}%, "
+                                    f"taker={rates['taker_fee']*100:.4f}%"
+                                )
                         # Создание новой сетки
                         new_orders = self.order_manager.create_grid(
                             self.symbol, self.grid_levels, self.order_size, 
