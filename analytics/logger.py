@@ -31,17 +31,17 @@ class DataLogger:
         self.commission_file = os.path.join(self.log_dir, "commissions.csv")
         self.ai_log_file = os.path.join(self.log_dir, "ai_optimizations.csv")
         # Создаем заголовки CSV файлов
-        with open(self.log_file, 'w', newline='') as f:
+        with open(self.log_file, 'w', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'timestamp', 'current_price', 'active_orders', 'executed_orders',
                 'usdt_balance', 'btc_balance', 'net_profit', 'total_commission',
                 'grid_count', 'time_left_min', 'api_errors'
             ])
-        with open(self.commission_file, 'w', newline='') as f:
+        with open(self.commission_file, 'w', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['timestamp', 'order_id', 'side', 'commission', 'total_commission'])
-        with open(self.ai_log_file, 'w', newline='') as f:
+        with open(self.ai_log_file, 'w', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'timestamp', 'volatility', 'price_change_pct', 
@@ -52,7 +52,7 @@ class DataLogger:
     def log_trading_data(self, data):
         """📝 ЛОГИРОВАНИЕ ДАННЫХ ТОРГОВЛИ"""
         try:
-            with open(self.log_file, 'a', newline='') as f:
+            with open(self.log_file, 'a', encoding='utf-8', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([
                     data.get('timestamp', ''),
@@ -73,7 +73,7 @@ class DataLogger:
     def log_commission(self, commission_data):
         """💸 ЛОГИРОВАНИЕ КОМИССИЙ"""
         try:
-            with open(self.commission_file, 'a', newline='') as f:
+            with open(self.commission_file, 'a', encoding='utf-8', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([
                     commission_data.get('timestamp', ''),
@@ -88,7 +88,7 @@ class DataLogger:
     def log_ai_optimization(self, optimization_data):
         """🧠 ЛОГИРОВАНИЕ AI ОПТИМИЗАЦИЙ"""
         try:
-            with open(self.ai_log_file, 'a', newline='') as f:
+            with open(self.ai_log_file, 'a', encoding='utf-8', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([
                     optimization_data.get('timestamp', ''),
@@ -105,7 +105,7 @@ class DataLogger:
     def log_error(self, error_data):
         """❌ ЛОГИРОВАНИЕ ОШИБОК"""
         try:
-            with open(self.error_log_file, 'a') as f:
+            with open(self.error_log_file, 'a', encoding='utf-8') as f:
                 f.write(f"{datetime.now().isoformat()} - {error_data}\n")
         except Exception as e:
             print(f"❌ Ошибка логирования ошибки: {e}")
