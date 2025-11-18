@@ -32,7 +32,7 @@ def save_auto_config(mode, duration, grid_levels=None, grid_spacing=None, grid_r
             f.write('⚙️ АВТОМАТИЧЕСКАЯ КОНФИГУРАЦИЯ ДЛЯ SYSTEMD\n')
             f.write('"""\n\n')
             f.write('# Автоматический запуск бота\n')
-            f.write(f'AUTO_START = True\n')
+            f.write('AUTO_START = True\n')
             f.write(f'AUTO_MODE = {mode}  # 1=стандарт, 2=ручной, 3=AI-режим\n')
             f.write(f'AUTO_DURATION = {duration}  # время работы в минутах\n\n')
             if mode == 3 and grid_levels and grid_spacing and grid_refresh:
@@ -110,7 +110,7 @@ def main():
             else:
                 print(f"📉 Бот в минусе: {profit:.4f} USDT")
         except KeyboardInterrupt:
-            print(f"\n\n⏹️  Прервано пользователем")
+            print("\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
             except:
@@ -200,7 +200,7 @@ def main():
             else:
                 print(f"📉 Бот в минусе: {profit:.4f} USDT")
         except KeyboardInterrupt:
-            print(f"\n\n⏹️  Прервано пользователем")
+            print("\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
             except:
