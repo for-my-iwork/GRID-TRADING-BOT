@@ -29,7 +29,10 @@ class MarketAnalyzer:
                     'volatility_1': current_volatility,
                     'volatility_5': current_volatility,
                     'support_resistance': self.find_support_resistance_demo(price_history),
-                    'market_regime': self.determine_market_regime_demo(current_volatility, current_trend)
+                    'market_regime': self.determine_market_regime_demo(
+                        current_volatility,
+                        current_trend
+                    )
                 }
                 return analysis
             else:
@@ -57,7 +60,12 @@ class MarketAnalyzer:
             'trend_60': 'neutral',
             'volatility_1': 0.001,
             'volatility_5': 0.001,
-            'support_resistance': {'support': 0, 'resistance': 0, 'current_vs_support': 0, 'current_vs_resistance': 0},
+            'support_resistance': {
+                'support': 0,
+                'resistance': 0,
+                'current_vs_support': 0,
+                'current_vs_resistance': 0
+            },
             'market_regime': 'normal_volatility'
         }
 
@@ -99,7 +107,12 @@ class MarketAnalyzer:
         """🎯 УРОВНИ ПОДДЕРЖКИ/СОПРОТИВЛЕНИЯ ДЛЯ ДЕМО-РЕЖИМА"""
         try:
             if len(price_history) == 0:
-                return {'support': 0, 'resistance': 0, 'current_vs_support': 0, 'current_vs_resistance': 0}
+                return {
+                    'support': 0,
+                    'resistance': 0,
+                    'current_vs_support': 0,
+                    'current_vs_resistance': 0
+                }
             current_price = price_history[-1]
             support = current_price * 0.99
             resistance = current_price * 1.01
@@ -111,7 +124,12 @@ class MarketAnalyzer:
             }
         except Exception as e:
             print(f"❌ Ошибка поиска уровней (демо): {e}")
-            return {'support': 0, 'resistance': 0, 'current_vs_support': 0, 'current_vs_resistance': 0}
+            return {
+                'support': 0,
+                'resistance': 0,
+                'current_vs_support': 0,
+                'current_vs_resistance': 0
+            }
 
     def determine_market_regime_demo(self, volatility, trend):
         """🎪 ОПРЕДЕЛЕНИЕ РЕЖИМА РЫНКА ДЛЯ ДЕМО-РЕЖИМА"""
@@ -206,10 +224,20 @@ class MarketAnalyzer:
                         'current_vs_support': (current_price - recent_low) / recent_low * 100,
                         'current_vs_resistance': (current_price - recent_high) / recent_high * 100
                     }
-            return {'support': 0, 'resistance': 0, 'current_vs_support': 0, 'current_vs_resistance': 0}
+            return {
+                'support': 0,
+                'resistance': 0,
+                'current_vs_support': 0,
+                'current_vs_resistance': 0
+            }
         except Exception as e:
             print(f"❌ Ошибка поиска уровней поддержки/сопротивления: {e}")
-            return {'support': 0, 'resistance': 0, 'current_vs_support': 0, 'current_vs_resistance': 0}
+            return {
+                'support': 0,
+                'resistance': 0,
+                'current_vs_support': 0,
+                'current_vs_resistance': 0
+            }
 
     def determine_market_regime(self, symbol):
         """🎪 ОПРЕДЕЛЕНИЕ РЕЖИМА РЫНКА ДЛЯ РЕАЛЬНОГО РЕЖИМА"""
