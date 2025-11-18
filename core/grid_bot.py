@@ -366,7 +366,7 @@ class AdvancedGridBot:
                 if current_price:
                     self.price_history = [current_price] * 50
                 ai_recommendations = self.ai_optimizer.get_optimized_parameters(
-                    self.price_history, 
+                    self.price_history,
                     self.monitoring_duration
                 )
                 print(f"📊 AI анализ завершен:")
@@ -551,7 +551,7 @@ class AdvancedGridBot:
                         if self.ai_mode:
                             try:
                                 ai_recommendations = self.ai_optimizer.get_optimized_parameters(
-                                    self.price_history, 
+                                    self.price_history,
                                     self.monitoring_duration
                                 )
                                 old_levels = self.grid_levels
