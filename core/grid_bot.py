@@ -438,9 +438,12 @@ class AdvancedGridBot:
                     f"Расстояние между уровнями в % (по умолчанию {default_spacing}%): "
                 ) or str(default_spacing)
                 self.grid_spacing = float(spacing_input) / 100
-                self.grid_refresh_time = int(input(
-                    f"Интервал пересоздания сетки в секундах (по умолчанию {self.grid_refresh_time}): "
-                ) or self.grid_refresh_time)
+                self.grid_refresh_time = int(
+                    input(
+                        f"Интервал пересоздания сетки в секундах "
+                        f"(по умолчанию {self.grid_refresh_time}): "
+                    ) or self.grid_refresh_time
+                )
                 stop_loss_input = input(
                     f"Стоп-лосс в % (по умолчанию {STOP_LOSS_PCT * 100}%): "
                 ) or str(STOP_LOSS_PCT * 100)
@@ -629,8 +632,9 @@ class AdvancedGridBot:
                                 if (old_spacing != self.grid_spacing
                                     or old_levels != self.grid_levels):
                                     print(
-                                        f"🧠 AI оптимизация: уровни {old_levels}→{self.grid_levels}, "
-                                        f"расстояние {old_spacing*100:.2f}%→{self.grid_spacing*100:.2f}%"
+                                        f"🧠 AI оптимизация: уровни {old_levels}→"
+                                        f"{self.grid_levels}, расстояние "
+                                        f"{old_spacing*100:.2f}%→{self.grid_spacing*100:.2f}%"
                                     )
                                     self.telegram_bot.send_ai_optimization_alert({
                                         'volatility': ai_recommendations.get('volatility', 0),
@@ -751,7 +755,8 @@ class AdvancedGridBot:
                         self.executed_orders_count += 1
                         self.telegram_bot.send_order_alert(order_data)
                         print(
-                            f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC по {current_price:.1f} | "
+                            f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC "
+                            f"по {current_price:.1f} | "
                             f"Комиссия: {commission:.4f} USDT"
                         )
                     # Сохраняем состояние после исполнения ордера
