@@ -3,10 +3,10 @@
 📱 TELEGRAM БОТ ДЛЯ УПРАВЛЕНИЯ И УВЕДОМЛЕНИЙ v9.2
 """
 
-import requests
 import time
 from datetime import datetime
-from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_POLLING_INTERVAL
+import requests
+from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
 from .commands import TelegramCommands
 
 class TelegramBot:
