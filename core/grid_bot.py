@@ -373,9 +373,9 @@ class AdvancedGridBot:
             "Ваш выбор (1/2/3): "
         ).strip()
         # Запрос времени работы для всех режимов
-        print(f"\n⏱️ Время работы сессии (в минутах)")
+        print("\n⏱️ Время работы сессии (в минутах)")
         print(f"   Доступный диапазон: {MIN_SESSION_DURATION} - {MAX_SESSION_DURATION} минут")
-        print(f"   Пример: 120 (2 часа), 720 (12 часов), 1440 (24 часа)")
+        print("   Пример: 120 (2 часа), 720 (12 часов), 1440 (24 часа)")
         try:
             duration_input = input(
                 f"Введите время работы (по умолчанию {self.monitoring_duration}): "
@@ -412,7 +412,7 @@ class AdvancedGridBot:
                     self.price_history,
                     self.monitoring_duration
                 )
-                print(f"📊 AI анализ завершен:")
+                print("📊 AI анализ завершен:")
                 print(f"   📈 Режим рынка: {ai_recommendations['market_regime']}")
                 print(f"   📏 Рекомендуемые уровни: {ai_recommendations['grid_levels']}")
                 print(f"   🎯 Расстояние: {ai_recommendations['grid_spacing']*100:.2f}%")
@@ -680,7 +680,7 @@ class AdvancedGridBot:
                     print(f"\n❌ {error_msg}")
                     print("🔄 Пытаемся продолжить через 30 секунд...")
                     time.sleep(30)
-            print(f"\n\n📈 ФИНАЛЬНЫЙ ОТЧЕТ:")
+            print("\n\n📈 ФИНАЛЬНЫЙ ОТЧЕТ:")
             if not self.trading_paused:
                 self.order_manager.cancel_all_orders(self.symbol)
             final_balance = self.get_total_balance_usdt()
