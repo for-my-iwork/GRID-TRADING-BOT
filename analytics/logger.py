@@ -253,12 +253,36 @@ class StateManager:
 _state_manager = StateManager()
 
 def save_state(state_data: Dict[str, Any]) -> bool:
+    """
+    Сохраняет состояние торгового бота в файл.
+    
+    Args:
+        state_data (Dict[str, Any]): 
+        Словарь с данными состояния для сохранения
+    Returns:
+        bool: True если сохранение успешно, False в случае ошибки
+    """
     return _state_manager.save_state(state_data)
 
 def load_state() -> Optional[Dict[str, Any]]:
+    """
+    Загружает ранее сохраненное состояние торгового бота.
+    
+    Returns:
+        Optional[Dict[str, Any]]: 
+        Словарь с данными состояния или None, 
+        если файл не существует или произошла ошибка
+    """
     return _state_manager.load_state()
 
 def clear_state() -> bool:
+    """
+    Очищает сохраненное состояние
+    (удаляет файл состояния).
+    Returns:
+        bool: True если удаление успешно,
+        False в случае ошибки
+    """
     return _state_manager.clear_state()
 
 def save_state_only() -> bool:
