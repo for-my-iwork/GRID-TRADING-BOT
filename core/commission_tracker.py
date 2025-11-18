@@ -17,7 +17,7 @@ class CommissionTracker:
         self.category = category
         self.maker_fee = 0.001  # Значение по умолчанию
         self.taker_fee = 0.001  # Значение по умолчанию
-        self.last_update = None    
+        self.last_update = None
 
     def fetch_fee_rates(self) -> Optional[Dict]:
         """
