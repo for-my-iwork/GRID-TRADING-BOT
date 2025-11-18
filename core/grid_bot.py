@@ -8,7 +8,25 @@
 import time
 import sys
 from datetime import datetime, timedelta
-from config import *
+from config import (
+    SYMBOL,
+    DEFAULT_GRID_LEVELS,
+    DEFAULT_ORDER_SIZE,
+    DEFAULT_GRID_SPACING,
+    MAX_API_ERRORS,
+    STOP_LOSS_PCT,
+    MAX_DRAWDOWN_PCT,
+    MIN_SESSION_DURATION,
+    MAX_SESSION_DURATION,
+    DEMO_MODE,
+    AI_GRID_LEVELS,
+    AI_GRID_SPACING,
+    AI_GRID_REFRESH,
+    AUTO_START,
+    AUTO_MODE,
+    AUTO_DURATION,
+    IS_SYSTEMD_LAUNCH
+)
 from utils.api_client import APIClient
 from ai.market_analyzer import MarketAnalyzer
 from ai.optimizer import AIOptimizer
