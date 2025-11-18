@@ -88,7 +88,7 @@ class OrderManager:
     def cancel_all_orders(self, symbol):
         """🛑 ОТМЕНА ВСЕХ ОРДЕРОВ"""
         try:
-            result = self.api_client.cancel_all_orders(symbol)
+            self.api_client.cancel_all_orders(symbol)
             self.active_order_ids = []
             print("✅ Все ордера отменены")
             return True
