@@ -49,7 +49,7 @@ class OrderManager:
                         self.total_commission += commission
                         print(f"✅ Buy ордер: {order_size} BTC по {price:.1f}")
                     else:
-                        print(f"❌ Ошибка размещения Buy ордера")
+                        print("❌ Ошибка размещения Buy ордера")
                 except Exception as e:
                     print(f"❌ Ошибка Buy ордера: {e}")
             else:
@@ -76,7 +76,7 @@ class OrderManager:
                         self.total_commission += commission
                         print(f"✅ Sell ордер: {order_size} BTC по {price:.1f}")
                     else:
-                        print(f"❌ Ошибка размещения Sell ордера")
+                        print("❌ Ошибка размещения Sell ордера")
                 except Exception as e:
                     print(f"❌ Ошибка Sell ордера: {e}")
             else:
