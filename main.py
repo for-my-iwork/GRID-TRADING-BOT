@@ -19,7 +19,7 @@ AUTO_CONFIG_EXISTS = os.path.exists('auto_config.py')
 
 if AUTO_CONFIG_EXISTS:
     from auto_config import (
-        AUTO_START, AUTO_MODE, AUTO_DURATION, AI_GRID_LEVELS, 
+        AUTO_START, AUTO_MODE, AUTO_DURATION, AI_GRID_LEVELS,
         AI_GRID_SPACING, AI_GRID_REFRESH
     )
 
