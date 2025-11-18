@@ -17,8 +17,8 @@ class CommissionTracker:
         self.category = category
         self.maker_fee = 0.001  # Значение по умолчанию
         self.taker_fee = 0.001  # Значение по умолчанию
-        self.last_update = None
-        
+        self.last_update = None    
+
     def fetch_fee_rates(self) -> Optional[Dict]:
         """
         Запрос реальных комиссий через Bybit API
@@ -47,7 +47,7 @@ class CommissionTracker:
         except Exception as e:
             self.logger.error(f"Ошибка получения комиссий: {str(e)}")
             return None
-    
+
     def update_commission_rates(self) -> bool:
         """
         Обновление кэшированных значений комиссий
@@ -73,7 +73,7 @@ class CommissionTracker:
                 "⚠️ Не удалось обновить комиссии, используются значения по умолчанию"
             )
             return False
-    
+
     def calculate_maker_commission(self, quantity: float, price: float) -> float:
         """
         Расчет комиссии для maker ордера
@@ -87,7 +87,7 @@ class CommissionTracker:
         """
         trade_value = quantity * price
         return trade_value * self.maker_fee
-        
+
     def calculate_taker_commission(self, quantity: float, price: float) -> float:
         """
         Расчет комиссии для taker ордера
@@ -101,7 +101,7 @@ class CommissionTracker:
         """
         trade_value = quantity * price
         return trade_value * self.taker_fee
-        
+
     def get_current_rates(self) -> Dict[str, float]:
         """
         Получение текущих значений комиссий
