@@ -80,11 +80,11 @@ class AdvancedGridBot:
         print("✅ Бот v9.2 инициализирован с модульной архитектурой")
 
     def set_auto_parameters(
-        self, 
-        mode, 
-        duration, 
-        grid_levels=None, 
-        grid_spacing=None, 
+        self,
+        mode,
+        duration,
+        grid_levels=None,
+        grid_spacing=None,
         grid_refresh=None
     ):
         """⚙️ УСТАНОВКА ПАРАМЕТРОВ ДЛЯ АВТОМАТИЧЕСКОГО РЕЖИМА"""
@@ -606,7 +606,7 @@ class AdvancedGridBot:
                         )
                         self.last_telegram_report = current_time
                     # Пересоздаем сетку по истечении времени (только если не на паузе)
-                    if (not self.trading_paused 
+                    if (not self.trading_paused
                         and current_time - last_grid_time > self.grid_refresh_time):
                         current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         print(
@@ -626,7 +626,7 @@ class AdvancedGridBot:
                                 self.grid_levels = ai_recommendations['grid_levels']
                                 self.grid_spacing = ai_recommendations['grid_spacing']
                                 self.grid_refresh_time = ai_recommendations['grid_refresh_time']
-                                if (old_spacing != self.grid_spacing 
+                                if (old_spacing != self.grid_spacing
                                     or old_levels != self.grid_levels):
                                     print(
                                         f"🧠 AI оптимизация: уровни {old_levels}→{self.grid_levels}, "
@@ -653,7 +653,7 @@ class AdvancedGridBot:
                                 )
                         # Создание новой сетки
                         new_orders = self.order_manager.create_grid(
-                            self.symbol, self.grid_levels, self.order_size, 
+                            self.symbol, self.grid_levels, self.order_size,
                             self.grid_spacing, current_price
                         )
                         last_grid_time = current_time
@@ -757,7 +757,7 @@ class AdvancedGridBot:
                     # Сохраняем состояние после исполнения ордера
                     self._save_state_safe()
             self.last_balance_usdt = current_usdt
-            self.last_balance_btc = current_btc            
+            self.last_balance_btc = current_btc
         except Exception as e:
             print(f"❌ Ошибка проверки исполненных ордеров: {e}")
 
