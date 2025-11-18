@@ -13,8 +13,14 @@ class OrderManager:
 
     def create_grid(self, symbol, grid_levels, order_size, grid_spacing, current_price):
         """🎯 СОЗДАНИЕ СЕТКИ ОРДЕРОВ"""
-        buy_prices = [round(current_price * (1 - i * grid_spacing), 1) for i in range(1, grid_levels + 1)]
-        sell_prices = [round(current_price * (1 + i * grid_spacing), 1) for i in range(1, grid_levels + 1)]
+        buy_prices = [
+            round(current_price * (1 - i * grid_spacing), 1)
+            for i in range(1, grid_levels + 1)
+        ]
+        sell_prices = [
+            round(current_price * (1 + i * grid_spacing), 1)
+            for i in range(1, grid_levels + 1)
+        ]
         print(f"📥 Уровни покупки: {[f'{p:,.1f}' for p in buy_prices]}")
         print(f"📤 Уровни продажи: {[f'{p:,.1f}' for p in sell_prices]}")
         orders_placed = 0
