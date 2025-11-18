@@ -63,10 +63,15 @@ class CommissionTracker:
             self.maker_fee = float(maker_fee_str)
             self.taker_fee = float(taker_fee_str)
             self.last_update = time.time()
-            self.logger.info(f"✅ Комиссии обновлены: maker={self.maker_fee:.6f}, taker={self.taker_fee:.6f}")
+            self.logger.info(
+                f"✅ Комиссии обновлены: maker={self.maker_fee:.6f}, "
+                f"taker={self.taker_fee:.6f}"
+            )
             return True
         else:
-            self.logger.warning("⚠️ Не удалось обновить комиссии, используются значения по умолчанию")
+            self.logger.warning(
+                "⚠️ Не удалось обновить комиссии, используются значения по умолчанию"
+            )
             return False
     
     def calculate_maker_commission(self, quantity: float, price: float) -> float:
