@@ -612,8 +612,8 @@ class AdvancedGridBot:
                         print(
                             f"\n🔄 [{current_timestamp}] Пересоздаём сетку "
                             f"(#{self.grid_count + 1})..."
-                        self.order_manager.cancel_all_orders(self.symbol)
                         )
+                        self.order_manager.cancel_all_orders(self.symbol)
                         # AI оптимизация при пересоздании сетки
                         if self.ai_mode:
                             try:
