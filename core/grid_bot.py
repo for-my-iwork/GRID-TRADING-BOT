@@ -645,7 +645,9 @@ class AdvancedGridBot:
                     # Расчет комиссий для каждого ордера
                     trade_value = abs(btc_change) * current_price
                     if btc_change > 0:  # BUY ордер
-                        commission = self.commission_tracker.calculate_taker_commission(abs(btc_change), current_price)
+                        commission = self.commission_tracker.calculate_taker_commission(
+                            abs(btc_change), current_price
+                        )
                         self.total_commission += commission
                         order_data = {
                             'side': 'BUY',
@@ -656,9 +658,14 @@ class AdvancedGridBot:
                         }
                         self.executed_orders_count += 1
                         self.telegram_bot.send_order_alert(order_data)
-                        print(f"✅ Обнаружена покупка: {btc_change:.6f} BTC по {current_price:.1f} | Комиссия: {commission:.4f} USDT")
+                        print(
+                            f"✅ Обнаружена покупка: {btc_change:.6f} BTC по {current_price:.1f} | "
+                            f"Комиссия: {commission:.4f} USDT"
+                        )
                     elif btc_change < 0:  # SELL ордер
-                        commission = self.commission_tracker.calculate_taker_commission(abs(btc_change), current_price)
+                        commission = self.commission_tracker.calculate_taker_commission(
+                            abs(btc_change), current_price
+                        )
                         self.total_commission += commission
                         order_data = {
                             'side': 'SELL', 
@@ -669,7 +676,10 @@ class AdvancedGridBot:
                         }
                         self.executed_orders_count += 1
                         self.telegram_bot.send_order_alert(order_data)
-                        print(f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC по {current_price:.1f} | Комиссия: {commission:.4f} USDT")
+                        print(
+                            f"✅ Обнаружена продажа: {abs(btc_change):.6f} BTC по {current_price:.1f} | "
+                            f"Комиссия: {commission:.4f} USDT"
+                        )
                     # Сохраняем состояние после исполнения ордера
                     self._save_state_safe()
             self.last_balance_usdt = current_usdt
