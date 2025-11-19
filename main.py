@@ -61,8 +61,7 @@ def is_systemd_launch():
     # Проверяем, запущены ли мы в интерактивном терминале
     if os.isatty(sys.stdin.fileno()):
         return False  # Ручной запуск в терминале
-    else:
-        return True   # Запуск через systemd (без интерактивного ввода)
+    return True   # Запуск через systemd (без интерактивного ввода)
 
 def main():
     """🚀 ГЛАВНАЯ ФУНКЦИЯ ДЛЯ ЗАПУСКА БОТА"""
