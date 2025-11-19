@@ -81,7 +81,7 @@ def main():
         print("🤖 АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD")
         print(f"📋 Загружены настройки: режим {AUTO_MODE}, время {AUTO_DURATION} мин")
         # Устанавливаем параметры из конфига
-        bot.ai_mode = True if AUTO_MODE == 3 else False
+        bot.ai_mode = AUTO_MODE == 3
         bot.monitoring_duration = AUTO_DURATION
         # Дополнительные настройки для AI-режима
         if AUTO_MODE == 3:
@@ -139,7 +139,7 @@ def main():
             ).strip().lower()
             if use_auto == 'y':
                 print("🤖 Запуск с сохраненными настройками...")
-                bot.ai_mode = True if AUTO_MODE == 3 else False
+                bot.ai_mode = AUTO_MODE == 3
                 bot.monitoring_duration = AUTO_DURATION
                 if AUTO_MODE == 3:
                     bot.grid_levels = AI_GRID_LEVELS
