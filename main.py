@@ -14,14 +14,33 @@ from analytics.logger import clear_state
 
 warnings.filterwarnings('ignore')
 
+# Объявляем переменные со значениями по умолчанию ДО условия
+AUTO_START = False # Нет автозапуска
+AUTO_MODE = 3  #  3=AI-режим
+AUTO_DURATION = 480  # время работы в минутах
+AI_GRID_LEVELS = 4 # уровень сеток
+AI_GRID_SPACING = 0.0015 # размер сетки
+AI_GRID_REFRESH = 2700 # время в секундах для пересоздания сетки
 # Проверяем наличие конфига автостарта
 AUTO_CONFIG_EXISTS = os.path.exists('auto_config.py')
 
 if AUTO_CONFIG_EXISTS:
+    # Импортируем в отдельные переменные
     from auto_config import (
-        AUTO_START, AUTO_MODE, AUTO_DURATION, AI_GRID_LEVELS,
-        AI_GRID_SPACING, AI_GRID_REFRESH
+        AUTO_START as IMPORTED_AUTO_START,
+        AUTO_MODE as IMPORTED_AUTO_MODE,
+        AUTO_DURATION as IMPORTED_AUTO_DURATION,
+        AI_GRID_LEVELS as IMPORTED_AI_GRID_LEVELS,
+        AI_GRID_SPACING as IMPORTED_AI_GRID_SPACING,
+        AI_GRID_REFRESH as IMPORTED_AI_GRID_REFRESH
     )
+    # Перезаписываем значениями из конфига
+    AUTO_START = IMPORTED_AUTO_START
+    AUTO_MODE = IMPORTED_AUTO_MODE
+    AUTO_DURATION = IMPORTED_AUTO_DURATION
+    AI_GRID_LEVELS = IMPORTED_AI_GRID_LEVELS
+    AI_GRID_SPACING = IMPORTED_AI_GRID_SPACING
+    AI_GRID_REFRESH = IMPORTED_AI_GRID_REFRESH
 
 def save_auto_config(mode, duration, grid_levels=None, grid_spacing=None, grid_refresh=None):
     """💾 СОХРАНЕНИЕ НАСТРОЕК ДЛЯ АВТОМАТИЧЕСКОГО ЗАПУСКА"""
