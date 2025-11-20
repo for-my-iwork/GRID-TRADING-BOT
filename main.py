@@ -61,7 +61,7 @@ def save_auto_config(mode, duration, grid_levels=None, grid_spacing=None, grid_r
                 f.write(f'AI_GRID_REFRESH = {grid_refresh}\n')
         print(f"✅ Настройки сохранены в auto_config.py: режим {mode}, время {duration} мин")
         return True
-    except Exception as e:
+    except (IOError, OSError, PermissionError) as e:
         print(f"❌ Ошибка сохранения конфига: {e}")
         return False
 
@@ -137,7 +137,7 @@ def main():
                 bot.cancel_all_orders_safe()
             except Exception:
                 pass
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
             print(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
@@ -227,7 +227,7 @@ def main():
                 bot.cancel_all_orders_safe()
             except Exception:
                 pass
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
             print(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
