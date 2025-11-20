@@ -6,28 +6,25 @@
 from config import STOP_LOSS_PCT, MAX_DRAWDOWN_PCT, MAX_API_ERRORS
 
 class RiskManager:
-    """🤖 УПРАВЛЕНИЕ РИСКАМИ ДЛЯ GRID BOT"""
-    
+    """🤖 УПРАВЛЕНИЕ РИСКАМИ ДЛЯ GRID BOT"""   
     def __init__(self):
         self.stop_loss_pct = STOP_LOSS_PCT
         self.max_drawdown_pct = MAX_DRAWDOWN_PCT
         self.max_api_errors = MAX_API_ERRORS
         self.stop_reason = None
 
-    def check_stop_conditions(self, net_profit, initial_total_balance, api_errors, max_profit, max_drawdown):
+    def check_stop_conditions(self, net_profit, initial_total_balance,
+                             api_errors, max_profit, max_drawdown):
         """🚨 ПРОВЕРКА УСЛОВИЙ ДЛЯ ОСТАНОВКИ"""
         self.stop_reason = None
-        
         # Проверка ошибок API
         if api_errors >= self.max_api_errors:
             self.stop_reason = f"Слишком много ошибок API ({api_errors})"
             return True
-            
         # Проверка стоп-лосса
         if net_profit < -abs(initial_total_balance * self.stop_loss_pct):
             self.stop_reason = f"Стоп-лосс ({self.stop_loss_pct*100}%)"
             return True
-            
         # Проверка максимальной просадки
         if initial_total_balance > 0:
             current_drawdown = max_profit - net_profit
@@ -35,7 +32,6 @@ class RiskManager:
             if drawdown_pct > (self.max_drawdown_pct * 100):
                 self.stop_reason = f"Максимальная просадка ({self.max_drawdown_pct*100}%)"
                 return True
-            
         return False
 
     def get_stop_reason(self):

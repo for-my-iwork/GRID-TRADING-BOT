@@ -4,8 +4,7 @@
 """
 
 class ReportGenerator:
-    """📊 ГЕНЕРАТОР ОТЧЕТОВ ДЛЯ ТОРГОВЛИ"""
-    
+    """📊 ГЕНЕРАТОР ОТЧЕТОВ ДЛЯ ТОРГОВЛИ"""    
     def __init__(self, telegram_bot=None):
         self.telegram_bot = telegram_bot
 
@@ -14,7 +13,6 @@ class ReportGenerator:
         if not self.telegram_bot:
             print("❌ Telegram бот не инициализирован для отправки отчета")
             return
-            
         message = f"""
 🏁 <b>ФИНАЛЬНЫЙ ОТЧЕТ v9.2</b>
 
@@ -38,7 +36,6 @@ class ReportGenerator:
         total_orders = stats.get('orders_created', 0)
         executed_orders = stats.get('orders_executed', 0)
         execution_rate = (executed_orders / total_orders * 100) if total_orders > 0 else 0
-        
         report = f"""
 📈 <b>ОТЧЕТ О ПРОИЗВОДИТЕЛЬНОСТИ</b>
 
@@ -64,12 +61,12 @@ class ReportGenerator:
         grid_count = stats.get('grid_count', 0)
         if grid_count == 0:
             return "N/A"
-        
         running_time = stats.get('running_time', '00:00')
         try:
             hours, minutes = map(int, running_time.split(':'))
             total_minutes = hours * 60 + minutes
             avg_minutes = total_minutes / grid_count
             return f"{avg_minutes:.1f} мин"
-        except:
+        except (IOError, OSError) as e:
+            print(f"Error saving report: {e}")
             return "N/A"

@@ -18,7 +18,7 @@ class CommissionTracker:
         self.maker_fee = 0.001  # Значение по умолчанию
         self.taker_fee = 0.001  # Значение по умолчанию
         self.last_update = None
-        
+
     def fetch_fee_rates(self) -> Optional[Dict]:
         """
         Запрос реальных комиссий через Bybit API
@@ -31,9 +31,7 @@ class CommissionTracker:
                 symbol=self.symbol,
                 category=self.category
             )
-            
             print(f"🔧 Ответ от API комиссий: {response}")  # Для отладки
-            
             if response and response.get('retCode') == 0:
                 fee_list = response.get('result', {}).get('list', [])
                 if fee_list and len(fee_list) > 0:
@@ -46,11 +44,10 @@ class CommissionTracker:
                 error_msg = response.get('retMsg', 'Unknown error') if response else 'No response'
                 self.logger.warning(f"Ошибка запроса комиссий: {error_msg}")
                 return None
-                
         except Exception as e:
             self.logger.error(f"Ошибка получения комиссий: {str(e)}")
             return None
-    
+
     def update_commission_rates(self) -> bool:
         """
         Обновление кэшированных значений комиссий
@@ -59,23 +56,24 @@ class CommissionTracker:
             bool: Успешно ли обновление
         """
         fee_data = self.fetch_fee_rates()
-        
         if fee_data:
             # Обрабатываем как строковые, так и числовые значения
             maker_fee_str = fee_data.get('makerFeeRate', str(self.maker_fee))
             taker_fee_str = fee_data.get('takerFeeRate', str(self.taker_fee))
-            
             self.maker_fee = float(maker_fee_str)
             self.taker_fee = float(taker_fee_str)
             self.last_update = time.time()
-            self.logger.info(f"✅ Комиссии обновлены: maker={self.maker_fee:.6f}, taker={self.taker_fee:.6f}")
+            self.logger.info(
+                f"✅ Комиссии обновлены: maker={self.maker_fee:.6f}, "
+                f"taker={self.taker_fee:.6f}"
+            )
             return True
         else:
-            self.logger.warning("⚠️ Не удалось обновить комиссии, используются значения по умолчанию")
+            self.logger.warning(
+                "⚠️ Не удалось обновить комиссии, используются значения по умолчанию"
+            )
             return False
-    
-    # ... остальные методы БЕЗ изменений ...
-    
+
     def calculate_maker_commission(self, quantity: float, price: float) -> float:
         """
         Расчет комиссии для maker ордера
@@ -89,7 +87,7 @@ class CommissionTracker:
         """
         trade_value = quantity * price
         return trade_value * self.maker_fee
-    
+
     def calculate_taker_commission(self, quantity: float, price: float) -> float:
         """
         Расчет комиссии для taker ордера
@@ -103,7 +101,7 @@ class CommissionTracker:
         """
         trade_value = quantity * price
         return trade_value * self.taker_fee
-    
+
     def get_current_rates(self) -> Dict[str, float]:
         """
         Получение текущих значений комиссий
