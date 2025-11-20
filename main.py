@@ -136,22 +136,22 @@ def main():
             print("\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
-            except Exception:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
+                print(f"⚠️ Не удалось отправить сообщение в Telegram: {e}")
             try:
                 bot.cancel_all_orders_safe()
-            except Exception:
-                pass
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
+                print(f"⚠️ Не удалось отменить ордера: {e}")
         except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
             print(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
-            except Exception:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as telegram_error:
+                print(f"⚠️ Не удалось отправить сообщение в Telegram: {telegram_error}")
             try:
                 bot.cancel_all_orders_safe()
-            except Exception:
-                pass
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as cancel_error:
+                print(f"⚠️ Не удалось отменить ордера: {cancel_error}")
     # ИНТЕРАКТИВНЫЙ РЕЖИМ (для ручного запуска)
     else:
         # При ручном запуске с существующим конфигом - предлагаем выбор
@@ -226,22 +226,22 @@ def main():
             print("\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
-            except Exception:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
+                print(f"⚠️ Не удалось отправить сообщение в Telegram: {e}")
             try:
                 bot.cancel_all_orders_safe()
-            except Exception:
-                pass
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
+                print(f"⚠️ Не удалось отменить ордера: {e}")
         except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
             print(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
-            except Exception:
-                print("⚠️ Не удалось отправить сообщение в Telegram")
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as telegram_error:
+                print(f"⚠️ Не удалось отправить сообщение в Telegram: {telegram_error}")
             try:
                 bot.cancel_all_orders_safe()
-            except Exception:
-                pass
+            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as cancel_error:
+                print(f"⚠️ Не удалось отменить ордера: {cancel_error}")
 
 if __name__ == "__main__":
     main()
