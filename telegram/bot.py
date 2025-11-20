@@ -168,22 +168,30 @@ class TelegramBot:
                 'timeout': 5
             }
             response = requests.get(url, params=params, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('ok') and data.get('result'):
-                    for update in data['result']:
-                        self.last_update_id = update['update_id']
-                        if 'message' in update and 'text' in update['message']:
-                            text = update['message']['text']
-                            chat_id = update['message']['chat']['id']
-                            message_time = update['message'].get('date', time.time())
-                            # Проверяем, что сообщение не старше 5 минут
-                            current_time = time.time()
-                            if current_time - message_time > 300:  # 5 минут
-                                print(f"⚠️ Пропускаем старое сообщение: {text}")
-                                continue
-                            if str(chat_id) == self.chat_id:
-                                self.commands_handler.process_command(text, bot_instance)
+            # Ранний возврат при ошибке HTTP
+            if response.status_code != 200:
+                return
+            data = response.json()
+            # Ранний возврат при отсутствии данных
+            if not data.get('ok') or not data.get('result'):
+                return
+            for update in data['result']:
+                self.last_update_id = update['update_id']
+                # Пропускаем update без message или text
+                if 'message' not in update or 'text' not in update['message']:
+                    continue
+                text = update['message']['text']
+                chat_id = update['message']['chat']['id']
+                message_time = update['message'].get('date', time.time())
+                # Пропускаем старые сообщения
+                current_time = time.time()
+                if current_time - message_time > 300:  # 5 минут
+                    print(f"⚠️ Пропускаем старое сообщение: {text}")
+                    continue
+                # Пропускаем сообщения не из нужного чата
+                if str(chat_id) != self.chat_id:
+                    continue
+                self.commands_handler.process_command(text, bot_instance)
         except (requests.exceptions.RequestException,
                 requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError,
