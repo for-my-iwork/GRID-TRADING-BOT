@@ -71,7 +71,7 @@ def signal_handler(signum, _frame):
     try:
         # Очищаем состояние при принудительном завершении
         clear_state()
-    except:
+    except Exception:
         pass
     sys.exit(0)
 
@@ -131,21 +131,21 @@ def main():
             print("\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
-            except:
+            except Exception:
                 print("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
-            except:
+            except Exception:
                 pass
         except Exception as e:
             print(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
-            except:
+            except Exception:
                 print("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
-            except:
+            except Exception:
                 pass
     # ИНТЕРАКТИВНЫЙ РЕЖИМ (для ручного запуска)
     else:
@@ -221,21 +221,21 @@ def main():
             print("\n\n⏹️  Прервано пользователем")
             try:
                 bot.send_telegram_message("🛑 Бот остановлен пользователем")
-            except:
+            except Exception:
                 print("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
-            except:
+            except Exception:
                 pass
         except Exception as e:
             print(f"💥 Критическая ошибка: {e}")
             try:
                 bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
-            except:
+            except Exception:
                 print("⚠️ Не удалось отправить сообщение в Telegram")
             try:
                 bot.cancel_all_orders_safe()
-            except:
+            except Exception:
                 pass
 
 if __name__ == "__main__":
