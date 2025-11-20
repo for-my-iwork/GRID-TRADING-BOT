@@ -160,7 +160,7 @@ def run_interactive_mode(bot):
         print("📁 Обнаружен файл auto_config.py")
         use_auto = input(
             "🤖 Использовать сохраненные настройки для автоматического запуска? (y/n): "
-        ).strip().lower() 
+        ).strip().lower()
         if use_auto == 'y':
             print("🤖 Запуск с сохраненными настройками...")
             bot.ai_mode = auto_mode == 3
