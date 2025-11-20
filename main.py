@@ -68,7 +68,7 @@ def main():
     print("🚀 Запуск AI-УЛУЧШЕННОГО Grid Bot v9.2...")
     print("=" * 50)
     # Определяем тип запуска
-    IS_SYSTEMD_LAUNCH = is_systemd_launch()
+    systemd_mode = is_systemd_launch()
     # Регистрируем обработчики сигналов
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -76,7 +76,7 @@ def main():
     # Регистрируем очистку состояния при нормальном завершении
     atexit.register(lambda: clear_state() if not hasattr(bot, 'user_commanded_stop') else None)
     # АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD
-    if IS_SYSTEMD_LAUNCH and AUTO_CONFIG_EXISTS and AUTO_START:
+    if systemd_mode and AUTO_CONFIG_EXISTS and AUTO_START:
         print("🤖 АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD")
         print(f"📋 Загружены настройки: режим {AUTO_MODE}, время {AUTO_DURATION} мин")
         # Устанавливаем параметры из конфига
