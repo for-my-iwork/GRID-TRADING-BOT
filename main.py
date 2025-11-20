@@ -15,12 +15,12 @@ from analytics.logger import clear_state
 warnings.filterwarnings('ignore')
 
 # Объявляем переменные со значениями по умолчанию ДО условия
-auto_start = False # Нет автозапуска
-auto_mode = 3  #  3=AI-режим
+auto_start = False  # Нет автозапуска
+auto_mode = 3  # 3=AI-режим
 auto_duration = 480  # время работы в минутах
-ai_grid_levels = 4 # уровень сеток
-ai_grid_spacing = 0.0015 # размер сетки
-ai_grid_refresh = 2700 # время в секундах для пересоздания сетки
+ai_grid_levels = 4  # уровень сеток
+ai_grid_spacing = 0.0015  # размер сетки
+ai_grid_refresh = 2700  # время в секундах для пересоздания сетки
 # Проверяем наличие конфига автостарта
 AUTO_CONFIG_EXISTS = os.path.exists('auto_config.py')
 
@@ -85,7 +85,129 @@ def is_systemd_launch():
     # Проверяем, запущены ли мы в интерактивном терминале
     if os.isatty(sys.stdin.fileno()):
         return False  # Ручной запуск в терминале
-    return True   # Запуск через systemd (без интерактивного ввода)
+    return True  # Запуск через systemd (без интерактивного ввода)
+
+def handle_bot_execution(bot):
+    """🚀 ЗАПУСК БОТА С ОБРАБОТКОЙ ОШИБОК И РЕЗУЛЬТАТОВ"""
+    try:
+        profit, stopped = bot.run_ai_enhanced_monitoring()
+        return profit, stopped
+    except KeyboardInterrupt:
+        print("\n\n⏹️  Прервано пользователем")
+        try:
+            bot.send_telegram_message("🛑 Бот остановлен пользователем")
+        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
+            print(f"⚠️ Не удалось отправить сообщение в Telegram: {e}")
+        try:
+            bot.cancel_all_orders_safe()
+        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
+            print(f"⚠️ Не удалось отменить ордера: {e}")
+        return 0, True
+    except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
+        print(f"💥 Критическая ошибка: {e}")
+        try:
+            bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
+        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as telegram_error:
+            print(f"⚠️ Не удалось отправить сообщение в Telegram: {telegram_error}")
+        try:
+            bot.cancel_all_orders_safe()
+        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as cancel_error:
+            print(f"⚠️ Не удалось отменить ордера: {cancel_error}")
+        return 0, True
+
+def print_bot_results(profit, stopped, bot):
+    """📊 ВЫВОД РЕЗУЛЬТАТОВ РАБОТЫ БОТА"""
+    if stopped:
+        if hasattr(bot, 'max_api_errors') and bot.api_errors >= bot.max_api_errors:
+            print("\n🛑 Работа остановлена из-за большого количества ошибок API!")
+        elif bot.user_commanded_stop:
+            print("\n🛑 Работа остановлена по команде пользователя!")
+        elif bot.user_commanded_emergency_stop:
+            print("\n🛑 Аварийная остановка по команде пользователя!")
+        else:
+            print("\n🛑 Работа остановлена по условию стоп-лосса!")
+    else:
+        print("\n🛑 Завершение работы по таймеру...")
+    if profit > 0:
+        print(f"🎉 Бот ЗАРАБОТАЛ: +{profit:.4f} USDT!")
+    else:
+        print(f"📉 Бот в минусе: {profit:.4f} USDT")
+
+def run_systemd_mode(bot):
+    """🤖 ЗАПУСК В РЕЖИМЕ SYSTEMD"""
+    print("🤖 АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD")
+    print(f"📋 Загружены настройки: режим {auto_mode}, время {auto_duration} мин")
+    # Устанавливаем параметры из конфига
+    bot.ai_mode = auto_mode == 3
+    bot.monitoring_duration = auto_duration
+    # Дополнительные настройки для AI-режима
+    if auto_mode == 3:
+        bot.grid_levels = ai_grid_levels
+        bot.grid_spacing = ai_grid_spacing
+        bot.grid_refresh_time = ai_grid_refresh
+        print(f"🧠 AI параметры: уровни {ai_grid_levels}, "
+              f"расстояние {ai_grid_spacing * 100:.3f}%, "
+              f"обновление {ai_grid_refresh} сек")
+    print("✅ Параметры установлены из auto_config.py")
+    # Запускаем бота и обрабатываем результаты
+    profit, stopped = handle_bot_execution(bot)
+    print_bot_results(profit, stopped, bot)
+
+def run_interactive_mode(bot):
+    """🎮 ЗАПУСК В ИНТЕРАКТИВНОМ РЕЖИМЕ"""
+    # При ручном запуске с существующим конфигом - предлагаем выбор
+    if AUTO_CONFIG_EXISTS and auto_start:
+        print("📁 Обнаружен файл auto_config.py")
+        use_auto = input(
+            "🤖 Использовать сохраненные настройки для автоматического запуска? (y/n): "
+        ).strip().lower()
+        
+        if use_auto == 'y':
+            print("🤖 Запуск с сохраненными настройками...")
+            bot.ai_mode = auto_mode == 3
+            bot.monitoring_duration = auto_duration
+            if auto_mode == 3:
+                bot.grid_levels = ai_grid_levels
+                bot.grid_spacing = ai_grid_spacing
+                bot.grid_refresh_time = ai_grid_refresh
+            bot.print_parameters()
+            confirm = input("\n🚀 Запустить бота с этими параметрами? (y/n): ").strip().lower()
+            if confirm != 'y':
+                # Переходим к обычной интерактивной настройке
+                if not bot.interactive_setup():
+                    print("❌ Запуск отменен пользователем.")
+                    return False
+        else:
+            # Пользователь хочет новые настройки
+            if not bot.interactive_setup():
+                print("❌ Запуск отменен пользователем.")
+                return False
+    else:
+        # Обычная интерактивная настройка
+        if not bot.interactive_setup():
+            print("❌ Запуск отменен пользователем.")
+            return False
+    # После настройки предлагаем сохранить для автозапуска
+    save_config = input(
+        "\n💾 Сохранить настройки для автоматического запуска? (y/n): "
+    ).strip().lower()
+    if save_config == 'y':
+        mode = 3 if bot.ai_mode else 1  # Определяем номер режима
+        # Для AI-режима сохраняем дополнительные параметры
+        if bot.ai_mode:
+            save_auto_config(
+                mode=mode,
+                duration=bot.monitoring_duration,
+                grid_levels=bot.grid_levels,
+                grid_spacing=bot.grid_spacing,
+                grid_refresh=bot.grid_refresh_time
+            )
+        else:
+            save_auto_config(
+                mode=mode,
+                duration=bot.monitoring_duration
+            )
+    return True
 
 def main():
     """🚀 ГЛАВНАЯ ФУНКЦИЯ ДЛЯ ЗАПУСКА БОТА"""
@@ -101,147 +223,13 @@ def main():
     atexit.register(lambda: clear_state() if not hasattr(bot, 'user_commanded_stop') else None)
     # АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD
     if systemd_mode and AUTO_CONFIG_EXISTS and auto_start:
-        print("🤖 АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD")
-        print(f"📋 Загружены настройки: режим {auto_mode}, время {auto_duration} мин")
-        # Устанавливаем параметры из конфига
-        bot.ai_mode = auto_mode == 3
-        bot.monitoring_duration = auto_duration
-        # Дополнительные настройки для AI-режима
-        if auto_mode == 3:
-            bot.grid_levels = ai_grid_levels
-            bot.grid_spacing = ai_grid_spacing
-            bot.grid_refresh_time = ai_grid_refresh
-            print(f"🧠 AI параметры: уровни {ai_grid_levels}, "
-                  f"расстояние {ai_grid_spacing*100:.3f}%, "
-                  f"обновление {ai_grid_refresh} сек")
-        print("✅ Параметры установлены из auto_config.py")
-        try:
-            profit, stopped = bot.run_ai_enhanced_monitoring()
-            if stopped:
-                if hasattr(bot, 'max_api_errors') and bot.api_errors >= bot.max_api_errors:
-                    print("\n🛑 Работа остановлена из-за большого количества ошибок API!")
-                elif bot.user_commanded_stop:
-                    print("\n🛑 Работа остановлена по команде пользователя!")
-                elif bot.user_commanded_emergency_stop:
-                    print("\n🛑 Аварийная остановка по команде пользователя!")
-                else:
-                    print("\n🛑 Работа остановлена по условию стоп-лосса!")
-            else:
-                print("\n🛑 Завершение работы по таймеру...")
-            if profit > 0:
-                print(f"🎉 Бот ЗАРАБОТАЛ: +{profit:.4f} USDT!")
-            else:
-                print(f"📉 Бот в минусе: {profit:.4f} USDT")
-        except KeyboardInterrupt:
-            print("\n\n⏹️  Прервано пользователем")
-            try:
-                bot.send_telegram_message("🛑 Бот остановлен пользователем")
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
-                print(f"⚠️ Не удалось отправить сообщение в Telegram: {e}")
-            try:
-                bot.cancel_all_orders_safe()
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
-                print(f"⚠️ Не удалось отменить ордера: {e}")
-        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
-            print(f"💥 Критическая ошибка: {e}")
-            try:
-                bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as telegram_error:
-                print(f"⚠️ Не удалось отправить сообщение в Telegram: {telegram_error}")
-            try:
-                bot.cancel_all_orders_safe()
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as cancel_error:
-                print(f"⚠️ Не удалось отменить ордера: {cancel_error}")
+        run_systemd_mode(bot)
     # ИНТЕРАКТИВНЫЙ РЕЖИМ (для ручного запуска)
     else:
-        # При ручном запуске с существующим конфигом - предлагаем выбор
-        if AUTO_CONFIG_EXISTS and auto_start:
-            print("📁 Обнаружен файл auto_config.py")
-            use_auto = input(
-                "🤖 Использовать сохраненные настройки для автоматического запуска? (y/n): "
-            ).strip().lower()
-            if use_auto == 'y':
-                print("🤖 Запуск с сохраненными настройками...")
-                bot.ai_mode = auto_mode == 3
-                bot.monitoring_duration = auto_duration
-                if auto_mode == 3:
-                    bot.grid_levels = ai_grid_levels
-                    bot.grid_spacing = ai_grid_spacing
-                    bot.grid_refresh_time = ai_grid_refresh
-                bot.print_parameters()
-                confirm = input("\n🚀 Запустить бота с этими параметрами? (y/n): ").strip().lower()
-                if confirm != 'y':
-                    # Переходим к обычной интерактивной настройке
-                    if not bot.interactive_setup():
-                        print("❌ Запуск отменен пользователем.")
-                        return
-            else:
-                # Пользователь хочет новые настройки
-                if not bot.interactive_setup():
-                    print("❌ Запуск отменен пользователем.")
-                    return
-        else:
-            # Обычная интерактивная настройка
-            if not bot.interactive_setup():
-                print("❌ Запуск отменен пользователем.")
-                return
-        # После настройки предлагаем сохранить для автозапуска
-        save_config = input(
-            "\n💾 Сохранить настройки для автоматического запуска? (y/n): "
-        ).strip().lower()
-        if save_config == 'y':
-            mode = 3 if bot.ai_mode else 1  # Определяем номер режима
-            # Для AI-режима сохраняем дополнительные параметры
-            if bot.ai_mode:
-                save_auto_config(
-                    mode=mode,
-                    duration=bot.monitoring_duration,
-                    grid_levels=bot.grid_levels,
-                    grid_spacing=bot.grid_spacing,
-                    grid_refresh=bot.grid_refresh_time
-                )
-            else:
-                save_auto_config(
-                    mode=mode,
-                    duration=bot.monitoring_duration
-                )
-        try:
-            profit, stopped = bot.run_ai_enhanced_monitoring()
-            if stopped:
-                if hasattr(bot, 'max_api_errors') and bot.api_errors >= bot.max_api_errors:
-                    print("\n🛑 Работа остановлена из-за большого количества ошибок API!")
-                elif bot.user_commanded_stop:
-                    print("\n🛑 Работа остановлена по команде пользователя!")
-                elif bot.user_commanded_emergency_stop:
-                    print("\n🛑 Аварийная остановка по команде пользователя!")
-                else:
-                    print("\n🛑 Работа остановлена по условию стоп-лосса!")
-            else:
-                print("\n🛑 Завершение работы по таймеру...")
-            if profit > 0:
-                print(f"🎉 Бот ЗАРАБОТАЛ: +{profit:.4f} USDT!")
-            else:
-                print(f"📉 Бот в минусе: {profit:.4f} USDT")
-        except KeyboardInterrupt:
-            print("\n\n⏹️  Прервано пользователем")
-            try:
-                bot.send_telegram_message("🛑 Бот остановлен пользователем")
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
-                print(f"⚠️ Не удалось отправить сообщение в Telegram: {e}")
-            try:
-                bot.cancel_all_orders_safe()
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
-                print(f"⚠️ Не удалось отменить ордера: {e}")
-        except (ConnectionError, TimeoutError, ValueError, RuntimeError) as e:
-            print(f"💥 Критическая ошибка: {e}")
-            try:
-                bot.telegram_bot.send_message(f"💥 Критическая ошибка: {e}")
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as telegram_error:
-                print(f"⚠️ Не удалось отправить сообщение в Telegram: {telegram_error}")
-            try:
-                bot.cancel_all_orders_safe()
-            except (ConnectionError, TimeoutError, ValueError, RuntimeError) as cancel_error:
-                print(f"⚠️ Не удалось отменить ордера: {cancel_error}")
+        if run_interactive_mode(bot):
+            # Запускаем бота и обрабатываем результаты
+            profit, stopped = handle_bot_execution(bot)
+            print_bot_results(profit, stopped, bot)
 
 if __name__ == "__main__":
     main()
