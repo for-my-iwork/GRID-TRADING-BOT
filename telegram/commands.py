@@ -243,7 +243,15 @@ class TelegramCommands:
 
     def handle_restart_command(self, bot_instance):
         """🔄 ОБРАБОТКА КОМАНДЫ ПЕРЕЗАПУСКА"""
-        self.telegram_bot.send_message("🔄 Функция перезапуска в разработке")
+        status = "активен"
+        if hasattr(bot_instance, 'trading_paused') and bot_instance.trading_paused:
+            status = "на паузе"
+        elif hasattr(bot_instance, 'is_running') and not bot_instance.is_running:
+            status = "остановлен"
+        message = (f"🔄 Функция перезапуска в разработке\n"
+                   f"Текущий статус бота: {status}\n"
+                   f"Используйте /shutdown и запустите бота заново")
+        self.telegram_bot.send_message(message)
 
     def handle_unknown_command(self, command):
         """❓ ОБРАБОТКА НЕИЗВЕСТНОЙ КОМАНДЫ"""
