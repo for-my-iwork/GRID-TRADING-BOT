@@ -71,9 +71,14 @@ def signal_handler(signum, _frame):
     try:
         # Очищаем состояние при принудительном завершении
         clear_state()
-    except Exception:
-        pass
-    sys.exit(0)
+    except (OSError, IOError) as e:
+        print(f"⚠️ Файловая ошибка при очистке состояния: {e}")
+    except (ValueError, TypeError) as e:
+        print(f"⚠️ Ошибка данных при очистке состояния: {e}")
+    except Exception as e:
+        print(f"⚠️ Неожиданная ошибка при очистке состояния: {e}")
+    finally:
+        sys.exit(0)  # Всегда завершаем процесс
 
 def is_systemd_launch():
     """🔍 ОПРЕДЕЛЯЕМ ТИП ЗАПУСКА: SYSTEMD ИЛИ РУЧНОЙ"""
