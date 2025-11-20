@@ -15,12 +15,12 @@ from analytics.logger import clear_state
 warnings.filterwarnings('ignore')
 
 # Объявляем переменные со значениями по умолчанию ДО условия
-AUTO_START = False # Нет автозапуска
-AUTO_MODE = 3  #  3=AI-режим
-AUTO_DURATION = 480  # время работы в минутах
-AI_GRID_LEVELS = 4 # уровень сеток
-AI_GRID_SPACING = 0.0015 # размер сетки
-AI_GRID_REFRESH = 2700 # время в секундах для пересоздания сетки
+auto_start = False # Нет автозапуска
+auto_mode = 3  #  3=AI-режим
+auto_duration = 480  # время работы в минутах
+ai_grid_levels = 4 # уровень сеток
+ai_grid_spacing = 0.0015 # размер сетки
+ai_grid_refresh = 2700 # время в секундах для пересоздания сетки
 # Проверяем наличие конфига автостарта
 AUTO_CONFIG_EXISTS = os.path.exists('auto_config.py')
 
@@ -35,12 +35,12 @@ if AUTO_CONFIG_EXISTS:
         AI_GRID_REFRESH as IMPORTED_AI_GRID_REFRESH
     )
     # Перезаписываем значениями из конфига
-    AUTO_START = IMPORTED_AUTO_START
-    AUTO_MODE = IMPORTED_AUTO_MODE
-    AUTO_DURATION = IMPORTED_AUTO_DURATION
-    AI_GRID_LEVELS = IMPORTED_AI_GRID_LEVELS
-    AI_GRID_SPACING = IMPORTED_AI_GRID_SPACING
-    AI_GRID_REFRESH = IMPORTED_AI_GRID_REFRESH
+    auto_start = IMPORTED_AUTO_START
+    auto_mode = IMPORTED_AUTO_MODE
+    auto_duration = IMPORTED_AUTO_DURATION
+    ai_grid_levels = IMPORTED_AI_GRID_LEVELS
+    ai_grid_spacing = IMPORTED_AI_GRID_SPACING
+    ai_grid_refresh = IMPORTED_AI_GRID_REFRESH
 
 def save_auto_config(mode, duration, grid_levels=None, grid_spacing=None, grid_refresh=None):
     """💾 СОХРАНЕНИЕ НАСТРОЕК ДЛЯ АВТОМАТИЧЕСКОГО ЗАПУСКА"""
@@ -95,20 +95,20 @@ def main():
     # Регистрируем очистку состояния при нормальном завершении
     atexit.register(lambda: clear_state() if not hasattr(bot, 'user_commanded_stop') else None)
     # АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD
-    if systemd_mode and AUTO_CONFIG_EXISTS and AUTO_START:
+    if systemd_mode and AUTO_CONFIG_EXISTS and auto_start:
         print("🤖 АВТОМАТИЧЕСКИЙ РЕЖИМ ДЛЯ SYSTEMD")
-        print(f"📋 Загружены настройки: режим {AUTO_MODE}, время {AUTO_DURATION} мин")
+        print(f"📋 Загружены настройки: режим {auto_mode}, время {auto_duration} мин")
         # Устанавливаем параметры из конфига
-        bot.ai_mode = AUTO_MODE == 3
-        bot.monitoring_duration = AUTO_DURATION
+        bot.ai_mode = auto_mode == 3
+        bot.monitoring_duration = auto_duration
         # Дополнительные настройки для AI-режима
-        if AUTO_MODE == 3:
-            bot.grid_levels = AI_GRID_LEVELS
-            bot.grid_spacing = AI_GRID_SPACING
-            bot.grid_refresh_time = AI_GRID_REFRESH
-            print(f"🧠 AI параметры: уровни {AI_GRID_LEVELS}, "
-                  f"расстояние {AI_GRID_SPACING*100:.3f}%, "
-                  f"обновление {AI_GRID_REFRESH} сек")
+        if auto_mode == 3:
+            bot.grid_levels = ai_grid_levels
+            bot.grid_spacing = ai_grid_spacing
+            bot.grid_refresh_time = ai_grid_refresh
+            print(f"🧠 AI параметры: уровни {ai_grid_levels}, "
+                  f"расстояние {ai_grid_spacing*100:.3f}%, "
+                  f"обновление {ai_grid_refresh} сек")
         print("✅ Параметры установлены из auto_config.py")
         try:
             profit, stopped = bot.run_ai_enhanced_monitoring()
@@ -150,19 +150,19 @@ def main():
     # ИНТЕРАКТИВНЫЙ РЕЖИМ (для ручного запуска)
     else:
         # При ручном запуске с существующим конфигом - предлагаем выбор
-        if AUTO_CONFIG_EXISTS and AUTO_START:
+        if AUTO_CONFIG_EXISTS and auto_start:
             print("📁 Обнаружен файл auto_config.py")
             use_auto = input(
                 "🤖 Использовать сохраненные настройки для автоматического запуска? (y/n): "
             ).strip().lower()
             if use_auto == 'y':
                 print("🤖 Запуск с сохраненными настройками...")
-                bot.ai_mode = AUTO_MODE == 3
-                bot.monitoring_duration = AUTO_DURATION
-                if AUTO_MODE == 3:
-                    bot.grid_levels = AI_GRID_LEVELS
-                    bot.grid_spacing = AI_GRID_SPACING
-                    bot.grid_refresh_time = AI_GRID_REFRESH
+                bot.ai_mode = auto_mode == 3
+                bot.monitoring_duration = auto_duration
+                if auto_mode == 3:
+                    bot.grid_levels = ai_grid_levels
+                    bot.grid_spacing = ai_grid_spacing
+                    bot.grid_refresh_time = ai_grid_refresh
                 bot.print_parameters()
                 confirm = input("\n🚀 Запустить бота с этими параметрами? (y/n): ").strip().lower()
                 if confirm != 'y':
