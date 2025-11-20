@@ -59,7 +59,7 @@ class TelegramCommands:
                 )
             else:
                 self.telegram_bot.send_message("❌ Функция паузы недоступна в этой версии бота")
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при остановке: {e}")
 
     def handle_shutdown_command(self, bot_instance):
@@ -76,7 +76,7 @@ class TelegramCommands:
                 bot_instance.shutdown()
             else:
                 self.telegram_bot.send_message("❌ Функция выключения недоступна в этой версии бота")
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при выключении: {e}")
 
     def handle_pause_command(self, bot_instance):
@@ -95,7 +95,7 @@ class TelegramCommands:
             else:
                 self.telegram_bot.send_message(
                     "❌ Функция возобновления недоступна в этой версии бота")
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при возобновлении: {e}")
 
     def handle_emergency_stop_command(self, bot_instance):
@@ -132,7 +132,7 @@ class TelegramCommands:
 • Комиссий: {bot_instance.total_commission:.4f} USDT
             """
             self.telegram_bot.send_message(status)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             error_msg = f"❌ Ошибка получения статуса: {e}"
             self.telegram_bot.send_message(error_msg)
 
@@ -163,7 +163,7 @@ class TelegramCommands:
 💸 Комиссии: {bot_instance.total_commission:.4f} USDT
             """
             self.telegram_bot.send_message(report)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             error_msg = f"❌ Ошибка получения баланса: {e}"
             self.telegram_bot.send_message(error_msg)
 
@@ -193,7 +193,7 @@ class TelegramCommands:
 📊 Режим рынка: {getattr(bot_instance, 'market_regime', 'Не определен')}
             """
             self.telegram_bot.send_message(params)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             error_msg = f"❌ Ошибка получения параметров: {e}"
             self.telegram_bot.send_message(error_msg)
 
@@ -238,7 +238,7 @@ class TelegramCommands:
 Используйте /help для просмотра всех команд.
                 """
             self.telegram_bot.send_message(start_text)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при запуске: {e}")
 
     def handle_restart_command(self, bot_instance):
