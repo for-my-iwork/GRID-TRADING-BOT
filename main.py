@@ -71,12 +71,12 @@ def signal_handler(signum, _frame):
     try:
         # Очищаем состояние при принудительном завершении
         clear_state()
-    except (OSError, IOError) as e:
+    except (OSError, IOError, PermissionError) as e:
         print(f"⚠️ Файловая ошибка при очистке состояния: {e}")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError, KeyError) as e:
         print(f"⚠️ Ошибка данных при очистке состояния: {e}")
-    except Exception as e:
-        print(f"⚠️ Неожиданная ошибка при очистке состояния: {e}")
+    except (RuntimeError, MemoryError) as e:
+        print(f"⚠️ Системная ошибка при очистке состояния: {e}")
     finally:
         sys.exit(0)  # Всегда завершаем процесс
 
