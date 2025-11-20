@@ -28,7 +28,10 @@ class TelegramBot:
             }
             response = requests.post(url, data=payload, timeout=10)
             return response.status_code == 200
-        except Exception as e:
+        except (requests.exceptions.RequestException,
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError) as e:
             print(f"❌ Ошибка отправки в Telegram: {e}")
             return False
 
@@ -110,7 +113,7 @@ class TelegramBot:
 ❌ Ошибок API: {data.get('api_errors', 0)}
             """
             return self.send_message(message)
-        except Exception as e:
+        except (KeyError, TypeError, ValueError) as e:
             print(f"❌ Ошибка формирования периодического отчета: {e}")
             # Отправка упрощенного отчета в случае ошибки
             simplified_message = f"""
@@ -181,7 +184,10 @@ class TelegramBot:
                                 continue
                             if str(chat_id) == self.chat_id:
                                 self.commands_handler.process_command(text, bot_instance)
-        except Exception as e:
+        except (requests.exceptions.RequestException,
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError) as e:
             print(f"❌ Ошибка проверки Telegram команд: {e}")
 
     def cleanup(self):
