@@ -23,7 +23,7 @@ class MarketAnalyzer:
                 current_volatility = self.calculate_volatility_demo(price_history)
                 analysis = {
                     'trend_1': current_trend,
-                    'trend_5': current_trend, 
+                    'trend_5': current_trend,
                     'trend_15': current_trend,
                     'trend_60': current_trend,
                     'volatility_1': current_volatility,
@@ -35,19 +35,18 @@ class MarketAnalyzer:
                     )
                 }
                 return analysis
-            else:
-                # Реальный режим (будет работать когда DEMO_MODE = False)
-                analysis = {
-                    'trend_1': self.analyze_trend(symbol, '1'),
-                    'trend_5': self.analyze_trend(symbol, '5'), 
-                    'trend_15': self.analyze_trend(symbol, '15'),
-                    'trend_60': self.analyze_trend(symbol, '60'),
-                    'volatility_1': self.calculate_timeframe_volatility(symbol, '1'),
-                    'volatility_5': self.calculate_timeframe_volatility(symbol, '5'),
-                    'support_resistance': self.find_support_resistance(symbol),
-                    'market_regime': self.determine_market_regime(symbol)
-                }
-                return analysis
+            # Реальный режим (будет работать когда DEMO_MODE = False)
+            analysis = {
+                'trend_1': self.analyze_trend(symbol, '1'),
+                'trend_5': self.analyze_trend(symbol, '5'), 
+                'trend_15': self.analyze_trend(symbol, '15'),
+                'trend_60': self.analyze_trend(symbol, '60'),
+                'volatility_1': self.calculate_timeframe_volatility(symbol, '1'),
+                'volatility_5': self.calculate_timeframe_volatility(symbol, '5'),
+                'support_resistance': self.find_support_resistance(symbol),
+                'market_regime': self.determine_market_regime(symbol)
+            }
+            return analysis
         finally:
             self.is_analyzing = False
 
@@ -80,10 +79,9 @@ class MarketAnalyzer:
             change_pct = ((second_half - first_half) / first_half) * 100
             if change_pct > 0.1:
                 return "bullish"
-            elif change_pct < -0.1:
+            if change_pct < -0.1:
                 return "bearish"
-            else:
-                return "neutral"
+            return "neutral"
         except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
             print(f"❌ Ошибка анализа тренда (демо): {e}")
             return "unknown"
@@ -139,18 +137,14 @@ class MarketAnalyzer:
             if volatility > 0.02:
                 if has_trend:
                     return "trending_high_volatility"
-                else:
-                    return "ranging_high_volatility"
-            elif volatility < 0.005:
+                return "ranging_high_volatility"
+            if volatility < 0.005:
                 if has_trend:
                     return "trending_low_volatility"
-                else:
-                    return "ranging_low_volatility"
-            else:
-                if has_trend:
-                    return "trending_normal_volatility"
-                else:
-                    return "ranging_normal_volatility"
+                return "ranging_low_volatility"
+            if has_trend:
+                return "trending_normal_volatility"
+            return "ranging_normal_volatility"
         except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
             print(f"❌ Ошибка определения режима рынка (демо): {e}")
             return "unknown"
@@ -172,10 +166,9 @@ class MarketAnalyzer:
                     sma_long = sum(prices[-20:]) / 20
                     if sma_short > sma_long * 1.002:
                         return "bullish"
-                    elif sma_short < sma_long * 0.998:
+                    if sma_short < sma_long * 0.998:
                         return "bearish"
-                    else:
-                        return "neutral"
+                    return "neutral"
             return "unknown"
         except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
             print(f"❌ Ошибка анализа тренда {timeframe}: {e}")
@@ -248,14 +241,12 @@ class MarketAnalyzer:
             bear_count = trends.count('bearish')
             if bull_count >= 2:
                 return "strong_bull"
-            elif bear_count >= 2:
+            if bear_count >= 2:
                 return "strong_bear"
-            else:
-                avg_volatility = (analysis['volatility_1'] + analysis['volatility_5']) / 2
-                if avg_volatility < 0.008:
-                    return "consolidation_low"
-                else:
-                    return "consolidation_high"
+            avg_volatility = (analysis['volatility_1'] + analysis['volatility_5']) / 2
+            if avg_volatility < 0.008:
+                return "consolidation_low"
+            return "consolidation_high"
         except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
             print(f"❌ Ошибка определения режима рынка: {e}")
             return "unknown"
