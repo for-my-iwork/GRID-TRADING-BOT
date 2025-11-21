@@ -37,21 +37,20 @@ class CommissionTracker:
                 if fee_list and len(fee_list) > 0:
                     fee_data = fee_list[0]
                     return fee_data
-                else:
-                    self.logger.warning("Пустой список комиссий в ответе API")
-                    return None
+                self.logger.warning("Пустой список комиссий в ответе API")
+                return None
             else:
                 error_msg = response.get('retMsg', 'Unknown error') if response else 'No response'
-                self.logger.warning(f"Ошибка запроса комиссий: {error_msg}")
+                self.logger.warning("Ошибка запроса комиссий: %s", error_msg)
                 return None
-        except Exception as e:
-            self.logger.error(f"Ошибка получения комиссий: {str(e)}")
+        except (ConnectionError, TimeoutError, ValueError, KeyError, 
+                IndexError, TypeError) as e:
+            self.logger.error("Ошибка получения комиссий: %s", e)
             return None
 
     def update_commission_rates(self) -> bool:
         """
         Обновление кэшированных значений комиссий
-        
         Returns:
             bool: Успешно ли обновление
         """
@@ -64,15 +63,14 @@ class CommissionTracker:
             self.taker_fee = float(taker_fee_str)
             self.last_update = time.time()
             self.logger.info(
-                f"✅ Комиссии обновлены: maker={self.maker_fee:.6f}, "
-                f"taker={self.taker_fee:.6f}"
+                "✅ Комиссии обновлены: maker=%.6f, taker=%.6f",
+                self.maker_fee, self.taker_fee
             )
             return True
-        else:
-            self.logger.warning(
-                "⚠️ Не удалось обновить комиссии, используются значения по умолчанию"
-            )
-            return False
+        self.logger.warning(
+            "⚠️ Не удалось обновить комиссии, используются значения по умолчанию"
+        )
+        return False
 
     def calculate_maker_commission(self, quantity: float, price: float) -> float:
         """
