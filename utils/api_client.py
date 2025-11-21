@@ -64,6 +64,7 @@ class APIClient:
                 else:
                     print("❌ Превышено максимальное количество попыток")
                     return None
+        return None  # Добавляем явный возврат в конце функции
 
     def get_current_price(self, symbol):
         """💰 ПОЛУЧЕНИЕ ТЕКУЩЕЙ ЦЕНЫ"""
@@ -107,21 +108,25 @@ class APIClient:
             return usdt_balance, btc_balance
         except (KeyError, ValueError, TypeError) as e:
             print(f"❌ Ошибка получения баланса: {e}")
-            return 0, 00
+            return 0, 0
 
     def place_order(self, symbol, side, order_type, qty, price,
                    time_in_force="GTC"):
         """📦 РАЗМЕЩЕНИЕ ОРДЕРА"""
+        # Создаем словарь параметров для уменьшения количества аргументов
+        order_params = {
+            'category': "spot",
+            'symbol': symbol,
+            'side': side,
+            'orderType': order_type,
+            'qty': str(qty),
+            'price': str(price),
+            'timeInForce': time_in_force
+        }
         try:
             order = self.robust_api_call(
                 self.session.place_order,
-                category="spot",
-                symbol=symbol,
-                side=side,
-                orderType=order_type,
-                qty=str(qty),
-                price=str(price),
-                timeInForce=time_in_force
+                **order_params
             )
             return order
         except (ConnectionError, TimeoutError, ValueError,
