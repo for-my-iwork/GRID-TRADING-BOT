@@ -110,9 +110,18 @@ class APIClient:
             print(f"❌ Ошибка получения баланса: {e}")
             return 0, 0
 
-    def place_order(self, symbol, side, order_type, qty, price,
+    def place_order(self, symbol, side, qty, price, order_type="Limit",
                    time_in_force="GTC"):
-        """📦 РАЗМЕЩЕНИЕ ОРДЕРА"""
+        """📦 РАЗМЕЩЕНИЕ ОРДЕРА
+        
+        Args:
+            symbol: Торговая пара
+            side: Направление (Buy/Sell)
+            qty: Количество
+            price: Цена
+            order_type: Тип ордера (по умолчанию Limit)
+            time_in_force: Время жизни ордера (по умолчанию GTC)
+        """
         # Создаем словарь параметров для уменьшения количества аргументов
         order_params = {
             'category': "spot",
