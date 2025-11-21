@@ -17,13 +17,10 @@ class OrderManager:
         buy_prices, sell_prices = self._calculate_grid_prices(
             current_price, grid_levels, grid_spacing
         )
-        
         # Выводим информацию о ценах
         self._print_price_levels(buy_prices, sell_prices)
-        
         # Получаем баланс
         usdt_balance, btc_balance = self.api_client.get_balance()
-        
         # Размещаем ордера на покупку и продажу
         buy_orders = self._place_buy_orders(
             symbol, order_size, buy_prices, usdt_balance
@@ -31,11 +28,9 @@ class OrderManager:
         sell_orders = self._place_sell_orders(
             symbol, order_size, sell_prices, btc_balance
         )
-        
         # Выводим статистику
         total_orders = buy_orders + sell_orders
         self._print_order_statistics(total_orders)
-        
         return total_orders
 
     def _calculate_grid_prices(self, current_price, grid_levels, grid_spacing):
@@ -89,22 +84,18 @@ class OrderManager:
                 price=price,
                 time_in_force="GTC"
             )
-            
             if order and 'result' in order and 'orderId' in order['result']:
                 order_id = order['result']['orderId']
                 self.active_order_ids.append(order_id)
                 self.total_orders_created += 1
-                
                 # Учет комиссии
                 commission = self.calculate_commission(order_size, price, side.upper())
                 self.total_commission += commission
-                
                 print(f"✅ {side} ордер: {order_size} BTC по {price:.1f}")
                 return True
             else:
                 print(f"❌ Ошибка размещения {side} ордера")
                 return False
-                
         except (ConnectionError, TimeoutError, ValueError,
                 TypeError, KeyError) as e:
             print(f"❌ Ошибка {side} ордера: {e}")
