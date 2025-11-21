@@ -109,7 +109,7 @@ class APIClient:
             print(f"❌ Ошибка получения баланса: {e}")
             return 0, 00
 
-    def place_order(self, symbol, side, order_type, qty, price, 
+    def place_order(self, symbol, side, order_type, qty, price,
                    time_in_force="GTC"):
         """📦 РАЗМЕЩЕНИЕ ОРДЕРА"""
         try:
