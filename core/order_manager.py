@@ -93,9 +93,8 @@ class OrderManager:
                 self.total_commission += commission
                 print(f"✅ {side} ордер: {order_size} BTC по {price:.1f}")
                 return True
-            else:
-                print(f"❌ Ошибка размещения {side} ордера")
-                return False
+            print(f"❌ Ошибка размещения {side} ордера")
+            return False
         except (ConnectionError, TimeoutError, ValueError,
                 TypeError, KeyError) as e:
             print(f"❌ Ошибка {side} ордера: {e}")
@@ -132,7 +131,7 @@ class OrderManager:
             print(f"❌ Ошибка получения активных ордеров: {e}")
             return 0
 
-    def calculate_commission(self, order_size, price, side):
+    def calculate_commission(self, order_size, price, _side):
         """💸 РАСЧЕТ КОМИССИИ ЗА СДЕЛКУ"""
         commission_rate = 0.001  # 0.1% комиссия
         order_value = order_size * price
