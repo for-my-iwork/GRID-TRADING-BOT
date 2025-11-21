@@ -10,6 +10,19 @@ from typing import Dict, Optional
 from utils.api_client import APIClient
 
 class CommissionTracker:
+    """Трекинг комиссий для торгового бота Bybit.
+    
+    Отслеживает и обновляет актуальные комиссии через API Bybit,
+    предоставляет методы для расчета комиссий для ордеров.
+    
+    Attributes:
+        api_client (APIClient): Клиент для работы с API
+        symbol (str): Торговая пара
+        category (str): Категория торговли (spot/linear)
+        maker_fee (float): Комиссия мейкера
+        taker_fee (float): Комиссия тейкера  
+        last_update (float): Время последнего обновления
+    """
     def __init__(self, api_client: APIClient, symbol: str, category: str = "spot"):
         self.logger = logging.getLogger(__name__)
         self.api_client = api_client
