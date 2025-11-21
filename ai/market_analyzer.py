@@ -134,17 +134,17 @@ class MarketAnalyzer:
         try:
             # Определяем есть ли тренд (bullish/bearish) или нет (neutral/unknown)
             has_trend = trend in ["bullish", "bearish"]
+            # Определяем уровень волатильности
             if volatility > 0.02:
-                if has_trend:
-                    return "trending_high_volatility"
-                return "ranging_high_volatility"
-            if volatility < 0.005:
-                if has_trend:
-                    return "trending_low_volatility"
-                return "ranging_low_volatility"
+                volatility_type = "high_volatility"
+            elif volatility < 0.005:
+                volatility_type = "low_volatility"
+            else:
+                volatility_type = "normal_volatility"
+            # Формируем результат на основе тренда и волатильности
             if has_trend:
-                return "trending_normal_volatility"
-            return "ranging_normal_volatility"
+                return f"trending_{volatility_type}"
+            return f"ranging_{volatility_type}"
         except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
             print(f"❌ Ошибка определения режима рынка (демо): {e}")
             return "unknown"
