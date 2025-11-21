@@ -100,7 +100,7 @@ class AdvancedGridBot:
     ):
         """⚙️ УСТАНОВКА ПАРАМЕТРОВ ДЛЯ АВТОМАТИЧЕСКОГО РЕЖИМА"""
         self.monitoring_duration = duration
-        self.ai_mode = (mode == 3)
+        self.ai_mode = mode == 3
         if mode == 3 and grid_levels and grid_spacing and grid_refresh:
             self.grid_levels = grid_levels
             self.grid_spacing = grid_spacing
