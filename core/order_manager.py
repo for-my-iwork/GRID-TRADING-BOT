@@ -50,7 +50,8 @@ class OrderManager:
                         print(f"✅ Buy ордер: {order_size} BTC по {price:.1f}")
                     else:
                         print("❌ Ошибка размещения Buy ордера")
-                except Exception as e:
+                except (ConnectionError, TimeoutError, ValueError, 
+                        TypeError, KeyError) as e:
                     print(f"❌ Ошибка Buy ордера: {e}")
             else:
                 print(f"⚠️ Недостаточно USDT для Buy ордера по {price:.1f}")
@@ -77,7 +78,8 @@ class OrderManager:
                         print(f"✅ Sell ордер: {order_size} BTC по {price:.1f}")
                     else:
                         print("❌ Ошибка размещения Sell ордера")
-                except Exception as e:
+                except (ConnectionError, TimeoutError, ValueError,
+                        TypeError, KeyError) as e:
                     print(f"❌ Ошибка Sell ордера: {e}")
             else:
                 print(f"⚠️ Недостаточно BTC для Sell ордера по {price:.1f}")
@@ -92,7 +94,8 @@ class OrderManager:
             self.active_order_ids = []
             print("✅ Все ордера отменены")
             return True
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError,
+                TypeError, KeyError) as e:
             print(f"⚠️ Ошибка при отмене ордеров: {e}")
             return False
 
@@ -105,7 +108,8 @@ class OrderManager:
                 'list' in orders['result']):
                 return len(orders['result']['list'])
             return 0
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError,
+                TypeError, KeyError) as e:
             print(f"❌ Ошибка получения активных ордеров: {e}")
             return 0
 
