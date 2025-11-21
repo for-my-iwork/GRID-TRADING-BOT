@@ -527,9 +527,13 @@ class AdvancedGridBot:
             self.last_telegram_report = start_time
             # Создаем первую сетку только если не на паузе
             if not self.trading_paused:
+                grid_config = {
+                    'levels': self.grid_levels,
+                    'order_size': self.order_size,
+                    'spacing': self.grid_spacing
+                }
                 self.order_manager.create_grid(
-                    self.symbol, self.grid_levels, self.order_size,
-                    self.grid_spacing, self.initial_price
+                    self.symbol, grid_config, self.initial_price
                 )
                 last_grid_time = time.time()
                 self.grid_count = 1
@@ -666,9 +670,13 @@ class AdvancedGridBot:
                                     f"taker={rates['taker_fee']*100:.4f}%"
                                 )
                         # Создание новой сетки
+                        grid_config = {
+                            'levels': self.grid_levels,
+                            'order_size': self.order_size,
+                            'spacing': self.grid_spacing
+                        }
                         self.order_manager.create_grid(
-                            self.symbol, self.grid_levels, self.order_size,
-                            self.grid_spacing, current_price
+                            self.symbol, grid_config, current_price
                         )
                         last_grid_time = current_time
                         self.grid_count += 1
