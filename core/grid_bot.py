@@ -7,6 +7,7 @@
 
 import time
 import sys
+import pickle
 from datetime import datetime, timedelta
 from config import (
     SYMBOL,
