@@ -20,7 +20,7 @@ class RiskManager:
         initial_total_balance = params.get('initial_total_balance')
         api_errors = params.get('api_errors')
         max_profit = params.get('max_profit')
-        max_drawdown = params.get('max_drawdown')
+        #max_drawdown = params.get('max_drawdown')
         self.stop_reason = None
         # Временное предупреждение о неиспользуемой переменной
         #if max_drawdown is not None:
