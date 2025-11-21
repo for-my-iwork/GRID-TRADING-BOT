@@ -11,24 +11,34 @@ class OrderManager:
         self.total_orders_created = 0
         self.total_commission = 0
 
-    def create_grid(self, symbol, grid_levels, order_size, grid_spacing, current_price):
-        """🎯 СОЗДАНИЕ СЕТКИ ОРДЕРОВ"""
+    def create_grid(self, symbol, grid_config, current_price):
+        """🎯 СОЗДАНИЕ СЕТКИ ОРДЕРОВ
+        
+        Args:
+            symbol: Торговая пара
+            grid_config: Словарь с параметрами сетки:
+                - levels: Количество уровней сетки
+                - order_size: Размер ордера
+                - spacing: Расстояние между уровнями
+            current_price: Текущая цена
+        """
+        # Извлекаем параметры из конфигурации
+        grid_levels = grid_config['levels']
+        order_size = grid_config['order_size']
+        grid_spacing = grid_config['spacing']
         # Выносим расчет цен в отдельные функции
         buy_prices, sell_prices = self._calculate_grid_prices(
             current_price, grid_levels, grid_spacing
         )
-        # Выводим информацию о ценах
+        # Остальной код остается без изменений...
         self._print_price_levels(buy_prices, sell_prices)
-        # Получаем баланс
         usdt_balance, btc_balance = self.api_client.get_balance()
-        # Размещаем ордера на покупку и продажу
         buy_orders = self._place_buy_orders(
             symbol, order_size, buy_prices, usdt_balance
         )
         sell_orders = self._place_sell_orders(
             symbol, order_size, sell_prices, btc_balance
         )
-        # Выводим статистику
         total_orders = buy_orders + sell_orders
         self._print_order_statistics(total_orders)
         return total_orders
