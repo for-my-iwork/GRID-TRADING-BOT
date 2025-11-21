@@ -84,7 +84,7 @@ class MarketAnalyzer:
                 return "bearish"
             else:
                 return "neutral"
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
             print(f"❌ Ошибка анализа тренда (демо): {e}")
             return "unknown"
 
@@ -99,7 +99,7 @@ class MarketAnalyzer:
             returns = np.diff(np.log(prices))
             volatility = np.std(returns) * np.sqrt(365 * 24 * 60)
             return max(0.001, min(0.05, volatility))
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
             print(f"❌ Ошибка расчета волатильности (демо): {e}")
             return 0.001
 
@@ -122,7 +122,7 @@ class MarketAnalyzer:
                 'current_vs_support': (current_price - support) / support * 100,
                 'current_vs_resistance': (current_price - resistance) / resistance * 100
             }
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
             print(f"❌ Ошибка поиска уровней (демо): {e}")
             return {
                 'support': 0,
@@ -151,7 +151,7 @@ class MarketAnalyzer:
                     return "trending_normal_volatility"
                 else:
                     return "ranging_normal_volatility"
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
             print(f"❌ Ошибка определения режима рынка (демо): {e}")
             return "unknown"
 
@@ -177,7 +177,7 @@ class MarketAnalyzer:
                     else:
                         return "neutral"
             return "unknown"
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
             print(f"❌ Ошибка анализа тренда {timeframe}: {e}")
             return "unknown"
 
@@ -198,7 +198,7 @@ class MarketAnalyzer:
                     volatility = np.std(returns) * np.sqrt(365 * 24 * 60)
                     return max(0.001, min(0.05, volatility))
             return 0.001
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
             print(f"❌ Ошибка расчета волатильности {timeframe}: {e}")
             return 0.001
 
@@ -230,7 +230,7 @@ class MarketAnalyzer:
                 'current_vs_support': 0,
                 'current_vs_resistance': 0
             }
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
             print(f"❌ Ошибка поиска уровней поддержки/сопротивления: {e}")
             return {
                 'support': 0,
@@ -256,6 +256,6 @@ class MarketAnalyzer:
                     return "consolidation_low"
                 else:
                     return "consolidation_high"
-        except Exception as e:
+        except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
             print(f"❌ Ошибка определения режима рынка: {e}")
             return "unknown"
