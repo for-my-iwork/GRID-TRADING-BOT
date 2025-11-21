@@ -52,11 +52,10 @@ class CommissionTracker:
                     return fee_data
                 self.logger.warning("Пустой список комиссий в ответе API")
                 return None
-            else:
-                error_msg = response.get('retMsg', 'Unknown error') if response else 'No response'
-                self.logger.warning("Ошибка запроса комиссий: %s", error_msg)
-                return None
-        except (ConnectionError, TimeoutError, ValueError, KeyError, 
+            error_msg = response.get('retMsg', 'Unknown error') if response else 'No response'
+            self.logger.warning("Ошибка запроса комиссий: %s", error_msg)
+            return None
+        except (ConnectionError, TimeoutError, ValueError, KeyError,
                 IndexError, TypeError) as e:
             self.logger.error("Ошибка получения комиссий: %s", e)
             return None
