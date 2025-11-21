@@ -205,7 +205,7 @@ class AdvancedGridBot:
                 print("⚠️ Session end time has passed, starting fresh")
                 return False
             return True
-        except Exception as e:
+        except (ValueError, TypeError, KeyError) as e:
             print(f"❌ State validation error: {e}")
             return False
 
@@ -306,7 +306,7 @@ class AdvancedGridBot:
             print(f"✅ State restored: {len(self.active_order_ids)} active orders, "
                   f"Executed: {self.executed_orders_count}, Grids: {self.grid_count}, "
                   f"Paused: {self.trading_paused}")
-        except Exception as e:
+        except (FileNotFoundError, pickle.PickleError, EOFError) as e:
             print(f"❌ Error restoring state: {e}. Starting with clean state.")
             # Сбрасываем состояние при ошибке восстановления
             self.active_order_ids = set()
@@ -324,7 +324,7 @@ class AdvancedGridBot:
                 print("⚠️ Failed to save state, but continuing operation")
             else:
                 print("💾 State saved successfully")
-        except Exception as e:
+        except (IOError, pickle.PickleError, TypeError) as e:
             print(f"❌ Unexpected error during state save: {e}")
 
     def initialize_bot(self):
@@ -426,7 +426,7 @@ class AdvancedGridBot:
                 self.ai_mode = True
                 self.market_regime = ai_recommendations['market_regime']
                 print("✅ Параметры установлены по рекомендации AI")
-            except Exception as e:
+            except (ValueError, AttributeError, ImportError) as e:
                 print(f"❌ Ошибка AI анализа: {e}. Использую стандартные параметры.")
                 self.ai_mode = True
                 self.grid_levels = 4
@@ -662,7 +662,7 @@ class AdvancedGridBot:
                                         'new_levels': self.grid_levels,
                                         'market_regime': ai_recommendations['market_regime']
                                     })
-                            except Exception as e:
+                            except (ValueError, AttributeError, ImportError) as e:
                                 print(f"❌ Ошибка AI оптимизации: {e}")
                         # Обновление комиссий (каждые 4 часа)
                         if self.grid_count % 8 == 0:
@@ -687,7 +687,7 @@ class AdvancedGridBot:
                         # Сохраняем состояние после пересоздания сетки
                         self._save_state_safe()
                     time.sleep(10)
-                except Exception as e:
+                except (ConnectionError, TimeoutError, ValueError) as e:
                     error_msg = f"Ошибка мониторинга: {e}"
                     print(f"\n❌ {error_msg}")
                     print("🔄 Пытаемся продолжить через 30 секунд...")
@@ -724,7 +724,7 @@ class AdvancedGridBot:
             print(f"✅ Ордеров исполнено: {self.executed_orders_count}")
             print(f"💸 Комиссий уплачено: {self.total_commission:.4f} USDT")
             return total_profit, stop_triggered
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError, KeyboardInterrupt) as e:
             error_msg = f"Критическая ошибка в основном цикле: {e}"
             print(f"❌ {error_msg}")
             self.telegram_bot.send_error_alert({'error': error_msg})
@@ -783,7 +783,7 @@ class AdvancedGridBot:
                     self._save_state_safe()
             self.last_balance_usdt = current_usdt
             self.last_balance_btc = current_btc
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError) as e:
             print(f"❌ Ошибка проверки исполненных ордеров: {e}")
 
     def get_total_balance_usdt(self):
@@ -821,7 +821,7 @@ class AdvancedGridBot:
                 'grid_count': self.grid_count,
                 'api_errors': self.api_errors
             })
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError) as e:
             print(f"❌ Ошибка отправки периодического отчета: {e}")
 
     def send_telegram_message(self, message):
