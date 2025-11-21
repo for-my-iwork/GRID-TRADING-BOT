@@ -32,7 +32,7 @@ from core.commission_tracker import CommissionTracker
 
 class AdvancedGridBot:
     """🚀 ОСНОВНОЙ КЛАСС GRID TRADING BOT"""
-    def __init__(self):
+    def __init__(self, exchange, symbol, config, telegram_bot, risk_manager, order_manager):
         """Инициализация бота с настройками из config.py"""
         # ==================== НАСТРОЙКИ ИЗ CONFIG ====================
         self.symbol = SYMBOL
@@ -261,7 +261,7 @@ class AdvancedGridBot:
             if start_time_ts:
                 self.start_time = datetime.fromtimestamp(start_time_ts)
             # Восстанавливаем время окончания сессии
-            self.session_end_time = bot_data.get('session_end_time')
+            self.session_end_time = bot_data.get('session_end_time') # pylint: disable=attribute-defined-outside-init
             # Восстанавливаем оставшееся время или используем длительность из конфига
             time_remaining = bot_data.get('time_remaining')
             if time_remaining and time_remaining > 0:
@@ -348,7 +348,7 @@ class AdvancedGridBot:
         else:
             print("⚠️ Использую комиссии по умолчанию")
         self.initial_usdt, self.initial_btc = balance
-        self.initial_price = price
+        self.initial_price = price # pylint: disable=attribute-defined-outside-init
         print(f"✅ Соединение установлено. Текущая цена: {price:.1f}")
         print(f"💰 Баланс: {balance[0]:.2f} USDT, {balance[1]:.6f} BTC")
         self.telegram_bot.send_start_alert({
@@ -495,7 +495,7 @@ class AdvancedGridBot:
                 return 0, True
             self.data_logger.setup_logging()
             self.initial_usdt, self.initial_btc = self.api_client.get_balance()
-            self.initial_price = self.api_client.get_current_price(self.symbol)
+            self.initial_price = self.api_client.get_current_price(self.symbol)  # pylint: disable=attribute-defined-outside-init
             if self.initial_price is None:
                 print("❌ Не удалось получить начальную цену после инициализации.")
                 return 0, True
@@ -514,7 +514,7 @@ class AdvancedGridBot:
             else:
                 # Новый сеанс
                 end_time = start_time + (self.monitoring_duration * 60)
-                self.session_end_time = end_time
+                self.session_end_time = end_time # pylint: disable=attribute-defined-outside-init
                 completion_time = datetime.now() + timedelta(minutes=self.monitoring_duration)
                 print(
                     f"⏰ Ожидаемое время завершения: "
@@ -734,8 +734,8 @@ class AdvancedGridBot:
         """✅ ПРОВЕРКА ИСПОЛНЕННЫХ ОРДЕРОВ С УЧЕТОМ КОМИССИЙ"""
         try:
             if not hasattr(self, 'last_balance_usdt'):
-                self.last_balance_usdt = current_usdt
-                self.last_balance_btc = current_btc
+                self.last_balance_usdt = current_usdt  # pylint: disable=attribute-defined-outside-init
+                self.last_balance_btc = current_btc  # pylint: disable=attribute-defined-outside-init
                 return
             btc_change = current_btc - self.last_balance_btc
             order_threshold = self.order_size * 0.8
@@ -781,8 +781,8 @@ class AdvancedGridBot:
                         )
                     # Сохраняем состояние после исполнения ордера
                     self._save_state_safe()
-            self.last_balance_usdt = current_usdt
-            self.last_balance_btc = current_btc
+            self.last_balance_usdt = current_usdt  # pylint: disable=attribute-defined-outside-init
+            self.last_balance_btc = current_btc  # pylint: disable=attribute-defined-outside-init
         except (ConnectionError, TimeoutError, ValueError) as e:
             print(f"❌ Ошибка проверки исполненных ордеров: {e}")
 
