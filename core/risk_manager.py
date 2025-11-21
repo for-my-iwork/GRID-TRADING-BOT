@@ -13,10 +13,19 @@ class RiskManager:
         self.max_api_errors = MAX_API_ERRORS
         self.stop_reason = None
 
-    def check_stop_conditions(self, net_profit, initial_total_balance,
-                             api_errors, max_profit, max_drawdown):
+    def check_stop_conditions(self, params):
         """🚨 ПРОВЕРКА УСЛОВИЙ ДЛЯ ОСТАНОВКИ"""
+        # Распаковываем параметры из словаря
+        net_profit = params.get('net_profit')
+        initial_total_balance = params.get('initial_total_balance')
+        api_errors = params.get('api_errors')
+        max_profit = params.get('max_profit')
+        max_drawdown = params.get('max_drawdown')
         self.stop_reason = None
+        # Временное предупреждение о неиспользуемой переменной
+        if max_drawdown is not None:
+            print(f"⚠️  ВНИМАНИЕ: max_drawdown ({max_drawdown}) не используется в логике остановки!")
+            print("   Это нужно поправить в будущих версиях!")
         # Проверка ошибок API
         if api_errors >= self.max_api_errors:
             self.stop_reason = f"Слишком много ошибок API ({api_errors})"
