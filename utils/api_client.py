@@ -124,7 +124,7 @@ class APIClient:
                 timeInForce=time_in_force
             )
             return order
-        except (ConnectionError, TimeoutError, ValueError, 
+        except (ConnectionError, TimeoutError, ValueError,
                 TypeError) as e:
             print(f"❌ Ошибка размещения ордера: {e}")
             return None
