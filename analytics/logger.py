@@ -67,7 +67,7 @@ class DataLogger:
                     data.get('time_left_min', 0),
                     data.get('api_errors', 0)
                 ])
-        except Exception as e:
+        except (OSError, IOError, csv.Error) as e:
             print(f"❌ Ошибка логирования: {e}")
 
     def log_commission(self, commission_data):
@@ -82,7 +82,7 @@ class DataLogger:
                     commission_data.get('commission', 0),
                     commission_data.get('total_commission', 0)
                 ])
-        except Exception as e:
+        except (OSError, IOError, csv.Error) as e:
             print(f"❌ Ошибка логирования комиссии: {e}")
 
     def log_ai_optimization(self, optimization_data):
@@ -99,7 +99,7 @@ class DataLogger:
                     optimization_data.get('old_spacing', 0) * 100,
                     optimization_data.get('new_spacing', 0) * 100
                 ])
-        except Exception as e:
+        except (OSError, IOError, csv.Error) as e:
             print(f"❌ Ошибка логирования AI оптимизации: {e}")
 
     def log_error(self, error_data):
@@ -107,9 +107,8 @@ class DataLogger:
         try:
             with open(self.error_log_file, 'a', encoding='utf-8') as f:
                 f.write(f"{datetime.now().isoformat()} - {error_data}\n")
-        except Exception as e:
+        except (OSError, IOError) as e:
             print(f"❌ Ошибка логирования ошибки: {e}")
-
 
 class StateManager:
     """🔄 МЕНЕДЖЕР СОСТОЯНИЯ БОТА"""
@@ -135,14 +134,14 @@ class StateManager:
             shutil.move(tmp_file.name, self.state_file)
             print("✅ State saved successfully")
             return True
-        except Exception as e:
+        except (OSError, IOError, TypeError, ValueError) as e:
             print(f"❌ Failed to save state: {e}")
             # Пытаемся восстановить из backup
             if os.path.exists(self.backup_file):
                 try:
                     shutil.copy2(self.backup_file, self.state_file)
                     print("✅ Restored state from backup")
-                except Exception as backup_error:
+                except OSError as backup_error:
                     print(f"❌ Failed to restore from backup: {backup_error}")
             return False
 
@@ -160,9 +159,8 @@ class StateManager:
                 if self._validate_state(state_data):
                     print("✅ State loaded successfully from main file")
                     return state_data
-                else:
-                    print("⚠️ State validation failed, trying backup")
-                    state_data = None
+                print("⚠️ State validation failed, trying backup")
+                state_data = None
             except (json.JSONDecodeError, IOError) as e:
                 print(f"⚠️ Failed to load main state file: {e}")
                 state_data = None
@@ -209,7 +207,7 @@ class StateManager:
                 print("⚠️ Session end time has passed, state is expired")
                 return False
             return True
-        except Exception as e:
+        except (KeyError, TypeError, ValueError) as e:
             print(f"❌ State validation error: {e}")
             return False
 
@@ -230,7 +228,7 @@ class StateManager:
                 os.remove(self.backup_file)
                 print("✅ Backup state cleared successfully")
             return True
-        except Exception as e:
+        except OSError as e:
             print(f"❌ Failed to clear state: {e}")
             return False
 
@@ -245,7 +243,7 @@ class StateManager:
             if current_state:
                 return self.save_state(current_state)
             return False
-        except Exception as e:
+        except (OSError, IOError, TypeError, ValueError) as e:
             print(f"❌ Failed to save state for restart: {e}")
             return False
 
