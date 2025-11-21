@@ -602,11 +602,15 @@ class AdvancedGridBot:
                         f"Осталось: {time_left:.1f} мин",
                         end=""
                     )
-                    # Проверяем условия остановки
-                    if self.risk_manager.check_stop_conditions(
-                        net_profit, initial_total_balance,
-                        self.api_errors, self.max_profit, self.max_drawdown
-                    ):
+                    # Проверяем условия остановки через словарь параметров
+                    stop_params = {
+                        'net_profit': net_profit,
+                        'initial_total_balance': initial_total_balance,
+                        'api_errors': self.api_errors,
+                        'max_profit': self.max_profit,
+                        'max_drawdown': self.max_drawdown
+                    }
+                    if self.risk_manager.check_stop_conditions(stop_params):
                         stop_triggered = True
                         self.telegram_bot.send_stop_alert({
                             'reason': self.risk_manager.get_stop_reason(),
