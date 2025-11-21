@@ -24,7 +24,7 @@ class RiskManager:
         self.stop_reason = None
         # Временное предупреждение о неиспользуемой переменной
         if max_drawdown is not None:
-            print(f"⚠️  ВНИМАНИЕ: max_drawdown ({max_drawdown}) не используется в логике остановки!")
+            print(f"⚠️ ВНИМАНИЕ: max_drawdown ({max_drawdown}) не используется в логике остановки!")
             print("   Это нужно поправить в будущих версиях!")
         # Проверка ошибок API
         if api_errors >= self.max_api_errors:
