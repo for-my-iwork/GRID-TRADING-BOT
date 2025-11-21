@@ -19,6 +19,8 @@ class DataLogger:
         self.log_file = None
         self.commission_file = None
         self.ai_log_file = None
+        self.orders_file = None
+        self.error_log_file = None
 
     def setup_logging(self):
         """📁 НАСТРОЙКА СИСТЕМЫ ЛОГИРОВАНИЯ"""
