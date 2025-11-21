@@ -118,6 +118,8 @@ class OrderManager:
         commission_rate = 0.001  # 0.1% комиссия
         order_value = order_size * price
         commission = order_value * commission_rate
+        # Логируем тип ордера для отладки (опционально)
+        # print(f"💸 Комиссия для {side} ордера: {commission:.6f} USDT")
         return commission
 
     def get_order_statistics(self):
