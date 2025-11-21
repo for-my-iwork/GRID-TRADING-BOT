@@ -32,7 +32,7 @@ from core.commission_tracker import CommissionTracker
 
 class AdvancedGridBot:
     """🚀 ОСНОВНОЙ КЛАСС GRID TRADING BOT"""
-    def __init__(self, exchange, symbol, config, telegram_bot, risk_manager, order_manager):
+    def __init__(self):
         """Инициализация бота с настройками из config.py"""
         # ==================== НАСТРОЙКИ ИЗ CONFIG ====================
         self.symbol = SYMBOL
