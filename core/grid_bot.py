@@ -179,36 +179,36 @@ class AdvancedGridBot:
         else:
             print("ℹ️ Starting with fresh state - no previous state found")
 
-def _validate_state(self, state_data: dict) -> bool:
-    """✅ ВАЛИДАЦИЯ СОХРАНЕННОГО СОСТОЯНИЯ"""
-    try:
-        # Объединяем несколько проверок
-        if not isinstance(state_data, dict) or state_data.get('version') != '1.1':
-            if isinstance(state_data, dict) and state_data.get('version') != '1.1':
-                print("⚠️ State version mismatch, starting fresh")
-            return False
-        bot_data = state_data.get('bot_data', {})
-        if not bot_data:
-            return False
-        # Проверяем обязательные поля
-        required_fields = [
-            'session_start_time', 'session_end_time', 'monitoring_duration',
-            'active_order_ids', 'executed_orders_count', 'grid_count'
-        ]
-        for field in required_fields:
-            if field not in bot_data:
-                print(f"⚠️ Missing required field in state: {field}")
+    def _validate_state(self, state_data: dict) -> bool:
+        """✅ ВАЛИДАЦИЯ СОХРАНЕННОГО СОСТОЯНИЯ"""
+        try:
+            # Объединяем несколько проверок
+            if not isinstance(state_data, dict) or state_data.get('version') != '1.1':
+                if isinstance(state_data, dict) and state_data.get('version') != '1.1':
+                    print("⚠️ State version mismatch, starting fresh")
                 return False
-        # Проверяем корректность времени
-        current_time = time.time()
-        session_end_time = bot_data.get('session_end_time')
-        if session_end_time and session_end_time < current_time:
-            print("⚠️ Session end time has passed, starting fresh")
+            bot_data = state_data.get('bot_data', {})
+            if not bot_data:
+                return False
+            # Проверяем обязательные поля
+            required_fields = [
+                'session_start_time', 'session_end_time', 'monitoring_duration',
+                'active_order_ids', 'executed_orders_count', 'grid_count'
+            ]
+            for field in required_fields:
+                if field not in bot_data:
+                    print(f"⚠️ Missing required field in state: {field}")
+                    return False
+            # Проверяем корректность времени
+            current_time = time.time()
+            session_end_time = bot_data.get('session_end_time')
+            if session_end_time and session_end_time < current_time:
+                print("⚠️ Session end time has passed, starting fresh")
+                return False
+            return True
+        except (ValueError, TypeError, KeyError) as e:
+            print(f"❌ State validation error: {e}")
             return False
-        return True
-    except (ValueError, TypeError, KeyError) as e:
-        print(f"❌ State validation error: {e}")
-        return False
 
     def _capture_state(self) -> dict:
         """💾 СОБОР КЛЮЧЕВЫХ ПЕРЕМЕННЫХ ДЛЯ СОХРАНЕНИЯ"""
