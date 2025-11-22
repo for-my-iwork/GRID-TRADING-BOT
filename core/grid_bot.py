@@ -504,7 +504,7 @@ class AdvancedGridBot:
             return 0, True
         start_time, end_time, initial_total_balance = self._setup_monitoring_session()
         last_grid_time, stop_triggered = self._initialize_trading_state(start_time)
-        return self._execute_main_loop(start_time, end_time, initial_total_balance,
+        return self._execute_main_loop(end_time, initial_total_balance, 
                                      last_grid_time, stop_triggered)
 
     def _initialize_monitoring(self):
@@ -569,10 +569,11 @@ class AdvancedGridBot:
         stop_triggered = False
         return last_grid_time, stop_triggered
 
-    def _execute_main_loop(self, start_time, end_time, initial_total_balance,
+    def _execute_main_loop(self, end_time, initial_total_balance,
                           last_grid_time, stop_triggered):
         """Выполнение основного цикла мониторинга"""
-        while time.time() < end_time and not stop_triggered and not self.shutdown_requested:
+        while (time.time() < end_time and not stop_triggered 
+               and not self.shutdown_requested):
             try:
                 if self._handle_user_commands():
                     stop_triggered = True
@@ -591,18 +592,25 @@ class AdvancedGridBot:
                 total_balance = current_usdt + (current_btc * current_price)
                 net_profit = total_balance - initial_total_balance - self.total_commission
                 time_left = (end_time - time.time()) / 60
-                self._log_trading_data(current_price, active_orders, current_usdt,
-                                     current_btc, net_profit, time_left)
+                self._log_trading_data({
+                    'current_price': current_price,
+                    'active_orders': active_orders,
+                    'current_usdt': current_usdt,
+                    'current_btc': current_btc,
+                    'net_profit': net_profit,
+                    'time_left': time_left
+                })
                 self._display_status(active_orders, net_profit, time_left)
                 # Проверяем условия остановки
-                if self._check_stop_conditions(net_profit, initial_total_balance, time_left):
+                if self._check_stop_conditions(net_profit, initial_total_balance):
                     stop_triggered = True
                     break
                 # Периодический отчет в Telegram
-                self._handle_telegram_reports(current_usdt, current_btc, current_price, net_profit)
+                self._handle_telegram_reports(current_usdt, current_btc, 
+                                            current_price, net_profit)
                 # Пересоздаем сетку по истечении времени
                 last_grid_time = self._handle_grid_recreation(
-                    current_price, last_grid_time, time_left
+                    current_price, last_grid_time
                 )
                 time.sleep(10)
             except (ConnectionError, TimeoutError, ValueError) as e:
@@ -643,20 +651,19 @@ class AdvancedGridBot:
         if len(self.price_history) > 100:
             self.price_history.pop(0)
 
-    def _log_trading_data(self, current_price, active_orders, current_usdt,
-                         current_btc, net_profit, time_left):
+    def _log_trading_data(self, data):
         """Логирование торговых данных"""
         log_data = {
             'timestamp': datetime.now().isoformat(),
-            'current_price': current_price,
-            'active_orders': active_orders,
+            'current_price': data['current_price'],
+            'active_orders': data['active_orders'],
             'executed_orders': self.executed_orders_count,
-            'usdt_balance': current_usdt,
-            'btc_balance': current_btc,
-            'net_profit': net_profit,
+            'usdt_balance': data['current_usdt'],
+            'btc_balance': data['current_btc'],
+            'net_profit': data['net_profit'],
             'total_commission': self.total_commission,
             'grid_count': self.grid_count,
-            'time_left_min': time_left,
+            'time_left_min': data['time_left'],
             'api_errors': self.api_errors
         }
         self.data_logger.log_trading_data(log_data)
@@ -673,7 +680,7 @@ class AdvancedGridBot:
             end=""
         )
 
-    def _check_stop_conditions(self, net_profit, initial_total_balance, time_left):
+    def _check_stop_conditions(self, net_profit, initial_total_balance):
         """Проверка условий остановки"""
         stop_params = {
             'net_profit': net_profit,
@@ -694,13 +701,13 @@ class AdvancedGridBot:
     def _handle_telegram_reports(self, current_usdt, current_btc, current_price, net_profit):
         """Обработка телеграм отчетов"""
         current_time = time.time()
-        if (current_time - self.last_telegram_report > self.telegram_report_interval):
+        if current_time - self.last_telegram_report > self.telegram_report_interval:
             self.send_periodic_report(
                 current_usdt, current_btc, current_price, net_profit
             )
             self.last_telegram_report = current_time
 
-    def _handle_grid_recreation(self, current_price, last_grid_time, time_left):
+    def _handle_grid_recreation(self, current_price, last_grid_time):
         """Обработка пересоздания сетки"""
         current_time = time.time()
         if (not self.trading_paused
