@@ -416,7 +416,6 @@ class AdvancedGridBot:
         """Настройка AI режима"""
         print("\n🧠 АКТИВАЦИЯ ПРОДВИНУТОГО AI-РЕЖИМА")
         print("=" * 45)
-        
         if DEMO_MODE:
             print("🔸 ДЕМО-РЕЖИМ: AI использует упрощенный анализ")
             print("🔸 В реальном режиме анализ будет более точным")
@@ -467,7 +466,6 @@ class AdvancedGridBot:
                 f"Размер ордера в BTC (по умолчанию {default_size}): "
             ) or str(default_size)
             self.order_size = float(size_input)
-            
             default_spacing = self.grid_spacing * 100
             spacing_input = input(
                 f"Расстояние между уровнями в % (по умолчанию {default_spacing}%): "
