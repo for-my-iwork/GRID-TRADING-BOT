@@ -90,26 +90,6 @@ class AdvancedGridBot:
         self._restore_initial_state()
         print("✅ Бот v9.2 инициализирован с модульной архитектурой")
 
-    def set_auto_parameters(  # pylint: disable=too-many-arguments
-        self,
-        mode,
-        duration,
-        grid_levels=None,
-        grid_spacing=None,
-        grid_refresh=None
-    ):
-        """⚙️ УСТАНОВКА ПАРАМЕТРОВ ДЛЯ АВТОМАТИЧЕСКОГО РЕЖИМА"""
-        self.monitoring_duration = duration
-        self.ai_mode = mode == 3
-        if mode == 3 and grid_levels and grid_spacing and grid_refresh:
-            self.grid_levels = grid_levels
-            self.grid_spacing = grid_spacing
-            self.grid_refresh_time = grid_refresh
-            print(
-                f"🧠 Установлены AI параметры: уровни {grid_levels}, "
-                f"расстояние {grid_spacing*100:.3f}%"
-            )
-
     def pause_trading(self):
         """⏸️ ПРИОСТАНОВКА ТОРГОВЛИ БЕЗ ВЫКЛЮЧЕНИЯ БОТА"""
         self.trading_paused = True
