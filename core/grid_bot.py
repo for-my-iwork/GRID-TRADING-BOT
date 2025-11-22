@@ -90,7 +90,7 @@ class AdvancedGridBot:
         self._restore_initial_state()
         print("✅ Бот v9.2 инициализирован с модульной архитектурой")
 
-    def set_auto_parameters(
+    def set_auto_parameters(  # pylint: disable=too-many-arguments
         self,
         mode,
         duration,
