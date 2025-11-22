@@ -366,14 +366,28 @@ class AdvancedGridBot:
         """🎮 ИНТЕРАКТИВНАЯ НАСТРОЙКА ПАРАМЕТРОВ"""
         print("\n🎮 ИНТЕРАКТИВНАЯ НАСТРОЙКА AI GRID BOT v9.2")
         print("=" * 50)
-        choice = input(
+        choice = self._get_user_mode_choice()
+        self._setup_session_duration()
+        if choice == "3":
+            self._setup_ai_mode()
+        elif choice == "2":
+            self._setup_manual_parameters()
+        self.print_parameters()
+        confirm = input("\n🚀 Запустить бота с этими параметрами? (y/n): ").strip().lower()
+        return confirm == 'y'
+
+    def _get_user_mode_choice(self):
+        """Получение выбора режима от пользователя"""
+        return input(
             "\nВыберите режим:\n"
             "1. Использовать стандартные параметры\n"
             "2. Настроить параметры вручную\n"
             "3. 🤖 ПРОДВИНУТЫЙ AI-режим (рекомендуется)\n\n"
             "Ваш выбор (1/2/3): "
         ).strip()
-        # Запрос времени работы для всех режимов
+
+    def _setup_session_duration(self):
+        """Настройка времени работы сессии"""
         print("\n⏱️ Время работы сессии (в минутах)")
         print(f"   Доступный диапазон: {MIN_SESSION_DURATION} - {MAX_SESSION_DURATION} минут")
         print("   Пример: 120 (2 часа), 720 (12 часов), 1440 (24 часа)")
@@ -397,77 +411,84 @@ class AdvancedGridBot:
                 f"❌ Ошибка ввода. Использую значение по умолчанию: "
                 f"{self.monitoring_duration} минут"
             )
-        if choice == "3":
-            print("\n🧠 АКТИВАЦИЯ ПРОДВИНУТОГО AI-РЕЖИМА")
-            print("=" * 45)
-            if DEMO_MODE:
-                print("🔸 ДЕМО-РЕЖИМ: AI использует упрощенный анализ")
-                print("🔸 В реальном режиме анализ будет более точным")
-            print("🤖 AI анализирует текущие рыночные условия...")
-            try:
-                # Получаем текущую цену для инициализации истории
-                current_price = self.api_client.get_current_price(self.symbol)
-                if current_price:
-                    self.price_history = [current_price] * 50
-                ai_recommendations = self.ai_optimizer.get_optimized_parameters(
-                    self.price_history,
-                    self.monitoring_duration
-                )
-                print("📊 AI анализ завершен:")
-                print(f"   📈 Режим рынка: {ai_recommendations['market_regime']}")
-                print(f"   📏 Рекомендуемые уровни: {ai_recommendations['grid_levels']}")
-                print(f"   🎯 Расстояние: {ai_recommendations['grid_spacing']*100:.2f}%")
-                print(f"   🔄 Интервал обновления: {ai_recommendations['grid_refresh_time']} сек")
-                print(f"   ⏱️ Время работы: {self.monitoring_duration} мин")
-                if DEMO_MODE:
-                    print("   💡 Примечание: В демо-режиме анализ основан на текущих данных")
-                self.grid_levels = ai_recommendations['grid_levels']
-                self.grid_spacing = ai_recommendations['grid_spacing']
-                self.grid_refresh_time = ai_recommendations['grid_refresh_time']
-                self.ai_mode = True
-                self.market_regime = ai_recommendations['market_regime']
-                print("✅ Параметры установлены по рекомендации AI")
-            except (ValueError, AttributeError, ImportError) as e:
-                print(f"❌ Ошибка AI анализа: {e}. Использую стандартные параметры.")
-                self.ai_mode = True
-                self.grid_levels = 4
-                self.grid_spacing = 0.0015
-                self.grid_refresh_time = 1800
-        elif choice == "2":
-            print("\n📊 Настройка параметров сетки:")
-            try:
-                self.grid_levels = int(input(
-                    f"Количество уровней в каждую сторону (по умолчанию {self.grid_levels}): "
-                ) or self.grid_levels)
-                default_size = self.order_size
-                size_input = input(
-                    f"Размер ордера в BTC (по умолчанию {default_size}): "
-                ) or str(default_size)
-                self.order_size = float(size_input)
-                default_spacing = self.grid_spacing * 100
-                spacing_input = input(
-                    f"Расстояние между уровнями в % (по умолчанию {default_spacing}%): "
-                ) or str(default_spacing)
-                self.grid_spacing = float(spacing_input) / 100
-                self.grid_refresh_time = int(
-                    input(
-                        f"Интервал пересоздания сетки в секундах "
-                        f"(по умолчанию {self.grid_refresh_time}): "
-                    ) or self.grid_refresh_time
-                )
-                stop_loss_input = input(
-                    f"Стоп-лосс в % (по умолчанию {STOP_LOSS_PCT * 100}%): "
-                ) or str(STOP_LOSS_PCT * 100)
-                self.risk_manager.stop_loss_pct = float(stop_loss_input) / 100
-                drawdown_input = input(
-                    f"Максимальная просадка в % (по умолчанию {MAX_DRAWDOWN_PCT * 100}%): "
-                ) or str(MAX_DRAWDOWN_PCT * 100)
-                self.risk_manager.max_drawdown_pct = float(drawdown_input) / 100
-            except ValueError as e:
-                print(f"❌ Ошибка ввода: {e}. Использую значения по умолчанию.")
-        self.print_parameters()
-        confirm = input("\n🚀 Запустить бота с этими параметрами? (y/n): ").strip().lower()
-        return confirm == 'y'
+
+    def _setup_ai_mode(self):
+        """Настройка AI режима"""
+        print("\n🧠 АКТИВАЦИЯ ПРОДВИНУТОГО AI-РЕЖИМА")
+        print("=" * 45)
+        
+        if DEMO_MODE:
+            print("🔸 ДЕМО-РЕЖИМ: AI использует упрощенный анализ")
+            print("🔸 В реальном режиме анализ будет более точным")
+        print("🤖 AI анализирует текущие рыночные условия...")
+        try:
+            # Получаем текущую цену для инициализации истории
+            current_price = self.api_client.get_current_price(self.symbol)
+            if current_price:
+                self.price_history = [current_price] * 50
+            ai_recommendations = self.ai_optimizer.get_optimized_parameters(
+                self.price_history,
+                self.monitoring_duration
+            )
+            self._apply_ai_recommendations(ai_recommendations)
+        except (ValueError, AttributeError, ImportError) as e:
+            print(f"❌ Ошибка AI анализа: {e}. Использую стандартные параметры.")
+            self.ai_mode = True
+            self.grid_levels = 4
+            self.grid_spacing = 0.0015
+            self.grid_refresh_time = 1800
+
+    def _apply_ai_recommendations(self, ai_recommendations):
+        """Применение AI рекомендаций"""
+        print("📊 AI анализ завершен:")
+        print(f"   📈 Режим рынка: {ai_recommendations['market_regime']}")
+        print(f"   📏 Рекомендуемые уровни: {ai_recommendations['grid_levels']}")
+        print(f"   🎯 Расстояние: {ai_recommendations['grid_spacing']*100:.2f}%")
+        print(f"   🔄 Интервал обновления: {ai_recommendations['grid_refresh_time']} сек")
+        print(f"   ⏱️ Время работы: {self.monitoring_duration} мин")
+        if DEMO_MODE:
+            print("   💡 Примечание: В демо-режиме анализ основан на текущих данных")
+        self.grid_levels = ai_recommendations['grid_levels']
+        self.grid_spacing = ai_recommendations['grid_spacing']
+        self.grid_refresh_time = ai_recommendations['grid_refresh_time']
+        self.ai_mode = True
+        self.market_regime = ai_recommendations['market_regime']
+        print("✅ Параметры установлены по рекомендации AI")
+
+    def _setup_manual_parameters(self):
+        """Настройка параметров вручную"""
+        print("\n📊 Настройка параметров сетки:")
+        try:
+            self.grid_levels = int(input(
+                f"Количество уровней в каждую сторону (по умолчанию {self.grid_levels}): "
+            ) or self.grid_levels)
+            default_size = self.order_size
+            size_input = input(
+                f"Размер ордера в BTC (по умолчанию {default_size}): "
+            ) or str(default_size)
+            self.order_size = float(size_input)
+            
+            default_spacing = self.grid_spacing * 100
+            spacing_input = input(
+                f"Расстояние между уровнями в % (по умолчанию {default_spacing}%): "
+            ) or str(default_spacing)
+            self.grid_spacing = float(spacing_input) / 100
+            self.grid_refresh_time = int(
+                input(
+                    f"Интервал пересоздания сетки в секундах "
+                    f"(по умолчанию {self.grid_refresh_time}): "
+                ) or self.grid_refresh_time
+            )
+            stop_loss_input = input(
+                f"Стоп-лосс в % (по умолчанию {STOP_LOSS_PCT * 100}%): "
+            ) or str(STOP_LOSS_PCT * 100)
+            self.risk_manager.stop_loss_pct = float(stop_loss_input) / 100
+            drawdown_input = input(
+                f"Максимальная просадка в % (по умолчанию {MAX_DRAWDOWN_PCT * 100}%): "
+            ) or str(MAX_DRAWDOWN_PCT * 100)
+            self.risk_manager.max_drawdown_pct = float(drawdown_input) / 100
+        except ValueError as e:
+            print(f"❌ Ошибка ввода: {e}. Использую значения по умолчанию.")
 
     def print_parameters(self):
         """📊 ВЫВОД ТЕКУЩИХ ПАРАМЕТРОВ БОТА"""
