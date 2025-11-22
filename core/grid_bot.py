@@ -573,7 +573,7 @@ class AdvancedGridBot:
         self.check_executed_orders(current_usdt, current_btc, current_price)
         # Расчет метрик и логирование
         net_profit, time_left = self._calculate_and_log_metrics(
-            current_usdt, current_btc, current_price, active_orders, 
+            current_usdt, current_btc, current_price, active_orders,
             initial_total_balance, end_time
         )
         # Проверяем условия остановки
@@ -589,7 +589,7 @@ class AdvancedGridBot:
         if len(self.price_history) > 100:
             self.price_history.pop(0)
 
-    def _calculate_and_log_metrics(self, current_usdt, current_btc, current_price, 
+    def _calculate_and_log_metrics(self, current_usdt, current_btc, current_price,
                                  active_orders, initial_total_balance, end_time):
         """Расчет метрик и логирование данных"""
         total_balance = current_usdt + (current_btc * current_price)
@@ -635,7 +635,7 @@ class AdvancedGridBot:
     def _recreate_grid_if_needed(self, last_grid_time, current_price):
         """Пересоздание сетки при необходимости"""
         current_time = time.time()
-        if (not self.trading_paused and 
+        if (not self.trading_paused and
             current_time - last_grid_time > self.grid_refresh_time):
             current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"\n🔄 [{current_timestamp}] Пересоздаём сетку (#{self.grid_count + 1})...")
