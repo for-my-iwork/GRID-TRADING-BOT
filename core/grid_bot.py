@@ -504,7 +504,7 @@ class AdvancedGridBot:
             return 0, True
         start_time, end_time, initial_total_balance = self._setup_monitoring_session()
         last_grid_time, stop_triggered = self._initialize_trading_state(start_time)
-        return self._execute_main_loop(end_time, initial_total_balance, 
+        return self._execute_main_loop(end_time, initial_total_balance,
                                      last_grid_time, stop_triggered)
 
     def _initialize_monitoring(self):
@@ -572,7 +572,7 @@ class AdvancedGridBot:
     def _execute_main_loop(self, end_time, initial_total_balance,
                           last_grid_time, stop_triggered):
         """Выполнение основного цикла мониторинга"""
-        while (time.time() < end_time and not stop_triggered 
+        while (time.time() < end_time and not stop_triggered
                and not self.shutdown_requested):
             try:
                 if self._handle_user_commands():
@@ -606,7 +606,7 @@ class AdvancedGridBot:
                     stop_triggered = True
                     break
                 # Периодический отчет в Telegram
-                self._handle_telegram_reports(current_usdt, current_btc, 
+                self._handle_telegram_reports(current_usdt, current_btc,
                                             current_price, net_profit)
                 # Пересоздаем сетку по истечении времени
                 last_grid_time = self._handle_grid_recreation(
