@@ -504,7 +504,7 @@ class AdvancedGridBot:
             return 0, True
         start_time, end_time, initial_total_balance = self._setup_monitoring_session()
         last_grid_time, stop_triggered = self._initialize_trading_state(start_time)
-        return self._execute_main_loop(start_time, end_time, initial_total_balance, 
+        return self._execute_main_loop(start_time, end_time, initial_total_balance,
                                      last_grid_time, stop_triggered)
 
     def _initialize_monitoring(self):
@@ -569,7 +569,7 @@ class AdvancedGridBot:
         stop_triggered = False
         return last_grid_time, stop_triggered
 
-    def _execute_main_loop(self, start_time, end_time, initial_total_balance, 
+    def _execute_main_loop(self, start_time, end_time, initial_total_balance,
                           last_grid_time, stop_triggered):
         """Выполнение основного цикла мониторинга"""
         while time.time() < end_time and not stop_triggered and not self.shutdown_requested:
@@ -591,7 +591,7 @@ class AdvancedGridBot:
                 total_balance = current_usdt + (current_btc * current_price)
                 net_profit = total_balance - initial_total_balance - self.total_commission
                 time_left = (end_time - time.time()) / 60
-                self._log_trading_data(current_price, active_orders, current_usdt, 
+                self._log_trading_data(current_price, active_orders, current_usdt,
                                      current_btc, net_profit, time_left)
                 self._display_status(active_orders, net_profit, time_left)
                 # Проверяем условия остановки
@@ -643,7 +643,7 @@ class AdvancedGridBot:
         if len(self.price_history) > 100:
             self.price_history.pop(0)
 
-    def _log_trading_data(self, current_price, active_orders, current_usdt, 
+    def _log_trading_data(self, current_price, active_orders, current_usdt,
                          current_btc, net_profit, time_left):
         """Логирование торговых данных"""
         log_data = {
