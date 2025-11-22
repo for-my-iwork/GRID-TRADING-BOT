@@ -31,7 +31,7 @@ from core.risk_manager import RiskManager
 from core.order_manager import OrderManager
 from core.commission_tracker import CommissionTracker
 
-class AdvancedGridBot:
+class AdvancedGridBot: # pylint: disable=too-many-instance-attributes
     """🚀 ОСНОВНОЙ КЛАСС GRID TRADING BOT"""
     def __init__(self):
         """Инициализация бота с настройками из config.py"""
