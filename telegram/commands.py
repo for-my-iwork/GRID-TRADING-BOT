@@ -16,33 +16,34 @@ class TelegramCommands:
         """⚙️ ОСНОВНОЙ ОБРАБОТЧИК КОМАНД"""
         command = command.lower().strip()
         current_time = time.time()
+        # Проверка кулдауна
         if command in self.command_cooldown:
             if current_time - self.command_cooldown[command] < 5:
-                self.telegram_bot.send_message("⏳ Слишком частые команды. Подождите 5 секунд.")
+                self.telegram_bot.send_message(
+                    "⏳ Слишком частые команды. Подождите 5 секунд.")
                 return
         self.command_cooldown[command] = current_time
-        if command == '/stop':
-            self.handle_stop_command(bot_instance)
-        elif command == '/shutdown':
-            self.handle_shutdown_command(bot_instance)
-        elif command == '/pause':
-            self.handle_pause_command(bot_instance)
-        elif command == '/resume':
-            self.handle_resume_command(bot_instance)
-        elif command == '/emergency_stop':
-            self.handle_emergency_stop_command(bot_instance)
-        elif command == '/status':
-            self.handle_status_command(bot_instance)
-        elif command == '/balance':
-            self.handle_balance_command(bot_instance)
-        elif command == '/params':
-            self.handle_params_command(bot_instance)
-        elif command == '/help':
-            self.handle_help_command()
-        elif command == '/start':
-            self.handle_start_command(bot_instance)
-        elif command == '/restart':
-            self.handle_restart_command(bot_instance)
+        # Словарь обработчиков команд
+        command_handlers = {
+            '/stop': self.handle_stop_command,
+            '/shutdown': self.handle_shutdown_command,
+            '/pause': self.handle_pause_command,
+            '/resume': self.handle_resume_command,
+            '/emergency_stop': self.handle_emergency_stop_command,
+            '/status': self.handle_status_command,
+            '/balance': self.handle_balance_command,
+            '/params': self.handle_params_command,
+            '/help': self.handle_help_command,
+            '/start': self.handle_start_command,
+            '/restart': self.handle_restart_command
+        }
+        # Вызов обработчика
+        handler = command_handlers.get(command)
+        if handler:
+            if command == '/help':
+                handler()
+            else:
+                handler(bot_instance)
         else:
             self.handle_unknown_command(command)
 
@@ -59,7 +60,7 @@ class TelegramCommands:
                 )
             else:
                 self.telegram_bot.send_message("❌ Функция паузы недоступна в этой версии бота")
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при остановке: {e}")
 
     def handle_shutdown_command(self, bot_instance):
@@ -76,7 +77,7 @@ class TelegramCommands:
                 bot_instance.shutdown()
             else:
                 self.telegram_bot.send_message("❌ Функция выключения недоступна в этой версии бота")
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при выключении: {e}")
 
     def handle_pause_command(self, bot_instance):
@@ -95,7 +96,7 @@ class TelegramCommands:
             else:
                 self.telegram_bot.send_message(
                     "❌ Функция возобновления недоступна в этой версии бота")
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при возобновлении: {e}")
 
     def handle_emergency_stop_command(self, bot_instance):
@@ -132,7 +133,7 @@ class TelegramCommands:
 • Комиссий: {bot_instance.total_commission:.4f} USDT
             """
             self.telegram_bot.send_message(status)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             error_msg = f"❌ Ошибка получения статуса: {e}"
             self.telegram_bot.send_message(error_msg)
 
@@ -163,7 +164,7 @@ class TelegramCommands:
 💸 Комиссии: {bot_instance.total_commission:.4f} USDT
             """
             self.telegram_bot.send_message(report)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             error_msg = f"❌ Ошибка получения баланса: {e}"
             self.telegram_bot.send_message(error_msg)
 
@@ -193,7 +194,7 @@ class TelegramCommands:
 📊 Режим рынка: {getattr(bot_instance, 'market_regime', 'Не определен')}
             """
             self.telegram_bot.send_message(params)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             error_msg = f"❌ Ошибка получения параметров: {e}"
             self.telegram_bot.send_message(error_msg)
 
@@ -238,12 +239,20 @@ class TelegramCommands:
 Используйте /help для просмотра всех команд.
                 """
             self.telegram_bot.send_message(start_text)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
             self.telegram_bot.send_message(f"❌ Ошибка при запуске: {e}")
 
     def handle_restart_command(self, bot_instance):
         """🔄 ОБРАБОТКА КОМАНДЫ ПЕРЕЗАПУСКА"""
-        self.telegram_bot.send_message("🔄 Функция перезапуска в разработке")
+        status = "активен"
+        if hasattr(bot_instance, 'trading_paused') and bot_instance.trading_paused:
+            status = "на паузе"
+        elif hasattr(bot_instance, 'is_running') and not bot_instance.is_running:
+            status = "остановлен"
+        message = (f"🔄 Функция перезапуска в разработке\n"
+                   f"Текущий статус бота: {status}\n"
+                   f"Используйте /shutdown и запустите бота заново")
+        self.telegram_bot.send_message(message)
 
     def handle_unknown_command(self, command):
         """❓ ОБРАБОТКА НЕИЗВЕСТНОЙ КОМАНДЫ"""

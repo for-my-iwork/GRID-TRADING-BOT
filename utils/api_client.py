@@ -30,7 +30,8 @@ class APIClient:
                 symbol=symbol
             )
             return fee_data
-        except Exception as e:
+        except (ConnectionError, TimeoutError, KeyError, ValueError,
+                TypeError) as e:
             print(f"❌ Ошибка получения комиссий через API: {e}")
             print("🔄 Использую стандартные комиссии 0.1%")
             # Возвращаем значения по умолчанию при ошибке
@@ -45,7 +46,6 @@ class APIClient:
                 }
             }
 
-
     def robust_api_call(self, api_function, *args, **kwargs):
         """🔄 НАДЕЖНЫЙ ВЫЗОВ API С ПОВТОРНЫМИ ПОПЫТКАМИ"""
         retry_delay = 5
@@ -53,7 +53,8 @@ class APIClient:
             try:
                 result = api_function(*args, **kwargs)
                 return result
-            except Exception as e:
+            except (ConnectionError, TimeoutError, ValueError,
+                    TypeError, KeyError) as e:
                 self.api_errors += 1
                 print(f"❌ Ошибка API (попытка {attempt + 1}/{self.max_retries}): {e}")
                 if attempt < self.max_retries - 1:
@@ -62,7 +63,8 @@ class APIClient:
                     retry_delay *= 2
                 else:
                     print("❌ Превышено максимальное количество попыток")
-                    return None  # Явно возвращаем None вместо словаря
+                    return None
+        return None  # Добавляем явный возврат в конце функции
 
     def get_current_price(self, symbol):
         """💰 ПОЛУЧЕНИЕ ТЕКУЩЕЙ ЦЕНЫ"""
@@ -79,7 +81,7 @@ class APIClient:
                 'lastPrice' in ticker['result']['list'][0]):
                 return float(ticker['result']['list'][0]['lastPrice'])
             return None
-        except Exception as e:
+        except (KeyError, ValueError, TypeError) as e:
             print(f"❌ Ошибка получения цены: {e}")
             return None
 
@@ -104,25 +106,43 @@ class APIClient:
                 if coin.get('coin') == 'BTC':
                     btc_balance = float(coin.get('walletBalance', 0))
             return usdt_balance, btc_balance
-        except Exception as e:
+        except (KeyError, ValueError, TypeError) as e:
             print(f"❌ Ошибка получения баланса: {e}")
             return 0, 0
 
-    def place_order(self, symbol, side, order_type, qty, price, time_in_force="GTC"):
-        """📦 РАЗМЕЩЕНИЕ ОРДЕРА"""
+    def place_order(self, symbol, side, qty, price, **kwargs):
+        """📦 РАЗМЕЩЕНИЕ ОРДЕРА
+        
+        Args:
+            symbol: Торговая пара
+            side: Направление (Buy/Sell)
+            qty: Количество
+            price: Цена
+            **kwargs: Дополнительные параметры:
+                order_type: Тип ордера (по умолчанию Limit)
+                time_in_force: Время жизни ордера (по умолчанию GTC)
+        """
+        # Извлекаем параметры с значениями по умолчанию
+        order_type = kwargs.get('order_type', 'Limit')
+        time_in_force = kwargs.get('time_in_force', 'GTC')
+        # Создаем словарь параметров
+        order_params = {
+            'category': "spot",
+            'symbol': symbol,
+            'side': side,
+            'orderType': order_type,
+            'qty': str(qty),
+            'price': str(price),
+            'timeInForce': time_in_force
+        }
         try:
             order = self.robust_api_call(
                 self.session.place_order,
-                category="spot",
-                symbol=symbol,
-                side=side,
-                orderType=order_type,  # Используем правильное название для pybit
-                qty=str(qty),
-                price=str(price),
-                timeInForce=time_in_force
+                **order_params
             )
             return order
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError,
+                TypeError) as e:
             print(f"❌ Ошибка размещения ордера: {e}")
             return None
 
@@ -135,7 +155,8 @@ class APIClient:
                 symbol=symbol
             )
             return result
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError,
+                TypeError) as e:
             print(f"❌ Ошибка отмены ордеров: {e}")
             return None
 
@@ -148,6 +169,7 @@ class APIClient:
                 symbol=symbol
             )
             return orders
-        except Exception as e:
+        except (ConnectionError, TimeoutError, ValueError,
+                TypeError) as e:
             print(f"❌ Ошибка получения открытых ордеров: {e}")
             return None
