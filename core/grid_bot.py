@@ -2,7 +2,7 @@
 #добавлен метод set_auto_parameters
 
 """
-🤖 ОСНОВНОЙ КЛАСС GRID TRADING BOT v9.2
+🤖 ОСНОВНОЙ КЛАСС GRID TRADING BOT v10.0
 """
 
 import time
@@ -88,7 +88,7 @@ class AdvancedGridBot: # pylint: disable=too-many-instance-attributes
         self.is_running = False
         self.shutdown_requested = False
         self._restore_initial_state()
-        print("✅ Бот v9.2 инициализирован с модульной архитектурой")
+        print("✅ Бот v инициализирован с модульной архитектурой")
 
     def pause_trading(self):
         """⏸️ ПРИОСТАНОВКА ТОРГОВЛИ БЕЗ ВЫКЛЮЧЕНИЯ БОТА"""
@@ -344,7 +344,7 @@ class AdvancedGridBot: # pylint: disable=too-many-instance-attributes
 
     def interactive_setup(self):
         """🎮 ИНТЕРАКТИВНАЯ НАСТРОЙКА ПАРАМЕТРОВ"""
-        print("\n🎮 ИНТЕРАКТИВНАЯ НАСТРОЙКА AI GRID BOT v9.2")
+        print("\n🎮 ИНТЕРАКТИВНАЯ НАСТРОЙКА AI GRID BOT v10.0")
         print("=" * 50)
         choice = self._get_user_mode_choice()
         self._setup_session_duration()
@@ -470,7 +470,7 @@ class AdvancedGridBot: # pylint: disable=too-many-instance-attributes
 
     def print_parameters(self):
         """📊 ВЫВОД ТЕКУЩИХ ПАРАМЕТРОВ БОТА"""
-        print("\n📊 ТЕКУЩИЕ ПАРАМЕТРЫ БОТА v9.2:")
+        print("\n📊 ТЕКУЩИЕ ПАРАМЕТРЫ БОТА v10.0:")
         print(f"   Символ: {self.symbol}")
         print(f"   Уровней сетки: {self.grid_levels} (в каждую сторону)")
         print(f"   Размер ордера: {self.order_size} BTC")
