@@ -1,6 +1,6 @@
 # telegram/bot.py
 """
-📱 TELEGRAM БОТ ДЛЯ УПРАВЛЕНИЯ И УВЕДОМЛЕНИЙ v9.2
+📱 TELEGRAM БОТ ДЛЯ УПРАВЛЕНИЯ И УВЕДОМЛЕНИЙ v10.0
 """
 
 import time
@@ -38,7 +38,7 @@ class TelegramBot:
     def send_start_alert(self, data):
         """🚀 УВЕДОМЛЕНИЕ О ЗАПУСКЕ БОТА"""
         message = f"""
-🚀 <b>GRID BOT v9.2 ЗАПУЩЕН</b>
+🚀 <b>GRID BOT v10.0 ЗАПУЩЕН</b>
 
 ⏰ Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 🎯 Символ: BTCUSDT
@@ -100,7 +100,7 @@ class TelegramBot:
             maker_fee = data.get('maker_fee', 0.1)  # Значение по умолчанию 0.1%
             taker_fee = data.get('taker_fee', 0.1)  # Значение по умолчанию 0.1%
             message = f"""
-📊 <b>ПЕРИОДИЧЕСКИЙ ОТЧЕТ v9.2</b>
+📊 <b>ПЕРИОДИЧЕСКИЙ ОТЧЕТ v10.0</b>
 
 ⏰ Время работы: {data.get('running_time', '00:00')}
 💰 Текущий баланс: {data.get('usdt_balance', 0):.2f} USDT + {data.get('btc_balance', 0):.6f} BTC
