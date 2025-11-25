@@ -14,7 +14,7 @@ class ReportGenerator:
             print("❌ Telegram бот не инициализирован для отправки отчета")
             return
         message = f"""
-🏁 <b>ФИНАЛЬНЫЙ ОТЧЕТ v9.2</b>
+🏁 <b>ФИНАЛЬНЫЙ ОТЧЕТ v10.0</b>
 
 💰 Начальный баланс: {stats.get('initial_balance', 0):.2f} USDT
 💰 Конечный баланс: {stats.get('final_balance', 0):.2f} USDT
