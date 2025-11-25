@@ -1,6 +1,6 @@
 # main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ С АВТОКОНФИГОМ
 """
-🚀 ADVANCED GRID TRADING BOT v9.2
+🚀 ADVANCED GRID TRADING BOT v10.0
 Главный запускающий файл
 """
 
@@ -210,7 +210,7 @@ def run_interactive_mode(bot):
 
 def main():
     """🚀 ГЛАВНАЯ ФУНКЦИЯ ДЛЯ ЗАПУСКА БОТА"""
-    print("🚀 Запуск AI-УЛУЧШЕННОГО Grid Bot v9.2...")
+    print("🚀 Запуск AI-УЛУЧШЕННОГО Grid Bot v10.0...")
     print("=" * 50)
     # Определяем тип запуска
     systemd_mode = is_systemd_launch()
