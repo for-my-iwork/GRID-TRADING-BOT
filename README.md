@@ -76,3 +76,12 @@ grep -i "error\|exception\|fail" /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.lo
 
 # Размер лог-файла
 ls -lh /home/test-bot/GRID-TRADING-BOT-dev/logs/bot.log
+
+# 4. Загрузка данных для симулятора
+python3 data_loader_cli.py --days 1 --interval 1 --force-reload
+после days - дни
+после интервала - 1/5/30 минутные тренды
+
+# 5. Запуск симулятора
+python3 simulator_cli.py --days 7 --usdt 50000 --btc 1
+
