@@ -1,6 +1,9 @@
 grid_trading_bot_v9/
 ├── 📄 main.py                    # Главный запускающий файл
 ├── ⚙️ config.py                  # Конфигурация
+├── 📄 auto_config.py             # Сохраненная конфигурация запуска бота
+├── 📄 data_loader_cli.py         # Загрузка данных для симулятора
+├── 📄 simulator_cli.py           # Запупуск симулятора
 ├── 🤖 core/                      # Основная логика
 │   ├── __init__.py
 │   ├── grid_bot.py              # Основной класс бота
@@ -16,6 +19,9 @@ grid_trading_bot_v9/
 │   └── commands.py              # Обработка команд
 ├── 📊 analytics/                # Аналитика и логирование
 │   ├── __init__.py
+│   ├── data_loader.py               # Загрузчик данных
+│   ├── advanced_simulator.py        # Модуль симулятора
+│   ├── advanced_historical_tester.py# Исторический тестер
 │   ├── logger.py               # Логирование
 │   └── reporter.py             # Отчетность
 └── 🔧 utils/                    # Вспомогательные модули
