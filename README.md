@@ -12,6 +12,8 @@ source grid_bot_env/bin/activate
 # 3. Установить зависимости
 pip install pybit requests numpy python-dotenv argparse pandas tqdm matplotlib
 
+
+
 Способ 1: Перенаправление вывода через systemd (рекомендую)
 Измените ваш service файл:
 
