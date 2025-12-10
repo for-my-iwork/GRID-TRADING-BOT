@@ -1,4 +1,4 @@
-grid_trading_bot_v9/
+grid_trading_bot_v10/
 ├── 📄 main.py                    # Главный запускающий файл
 ├── ⚙️ config.py                  # Конфигурация
 ├── 🤖 core/                      # Основная логика
